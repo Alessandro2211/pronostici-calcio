@@ -1,4 +1,6 @@
-// Scarica classifiche, calendario e marcatori da football-data.org e scrive site/data/dati.json.
+// Scarica da football-data.org:
+//  - site/data/live.json  (risultati di oggi, una sola richiesta, a ogni esecuzione)
+//  - site/data/dati.json  (classifiche, calendario, marcatori: solo se i dati hanno più di 30 minuti o mancano)
 // Uso: FOOTBALL_DATA_KEY=... node scripts/update.mjs
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,19 +14,22 @@ const NameMatch = require(path.join(root, 'site', 'names.js'));
 
 const KEY = process.env.FOOTBALL_DATA_KEY;
 const OUT = path.join(root, 'site', 'data', 'dati.json');
+const OUT_LIVE = path.join(root, 'site', 'data', 'live.json');
+const FULL_EVERY = 30 * 60 * 1000;
 const CODES = { 'serie-a': 'SA', premier: 'PL', liga: 'PD', bundesliga: 'BL1', ligue1: 'FL1', eredivisie: 'DED', primeira: 'PPL' };
 const PENDING = ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED', 'LIVE'];
 const DAY = 86400000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function writeOut(obj) {
-  fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  fs.writeFileSync(OUT, JSON.stringify(obj));
+function writeOut(obj, file = OUT) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(obj));
 }
 
 if (!KEY) {
   console.log('::warning::FOOTBALL_DATA_KEY non impostata: la pagina usa i dati incorporati.');
   writeOut({ generatedAt: new Date().toISOString(), leagues: {} });
+  writeOut({ generatedAt: new Date().toISOString(), matches: [] }, OUT_LIVE);
   process.exit(0);
 }
 
@@ -73,6 +78,7 @@ function pickMatchday(matches) {
   return { day: d, list: near(byDay.get(d)) };
 }
 
+async function fullUpdate() {
 const teamsBySite = siteTeams();
 const result = { generatedAt: new Date().toISOString(), leagues: {} };
 let okCount = 0;
@@ -109,6 +115,58 @@ for (const [id, code] of Object.entries(CODES)) {
   }
 }
 
-if (!okCount) { console.log('::error::Nessun campionato scaricato: non pubblico.'); process.exit(1); }
+if (!okCount) return false;
 writeOut(result);
 console.log('Scritto ' + OUT + ' (' + okCount + ' campionati)');
+return true;
+}
+
+
+// Risultati di ieri, oggi e domani per tutti i campionati: una sola richiesta.
+async function liveUpdate() {
+  const day = (n) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
+  const r = await api(`/matches?competitions=${Object.values(CODES).join(',')}&dateFrom=${day(-1)}&dateTo=${day(1)}`);
+  const matches = (r.matches || [])
+    .filter((m) => ['IN_PLAY', 'PAUSED', 'LIVE', 'FINISHED'].includes(m.status))
+    .map((m) => ({
+      comp: m.competition && m.competition.code, status: m.status, utc: m.utcDate,
+      minute: m.minute != null ? m.minute : undefined,
+      home: tm(m.homeTeam), away: tm(m.awayTeam),
+      score: { h: m.score && m.score.fullTime ? m.score.fullTime.home : null, a: m.score && m.score.fullTime ? m.score.fullTime.away : null },
+    }));
+  writeOut({ generatedAt: new Date().toISOString(), matches }, OUT_LIVE);
+  console.log('live: ' + matches.length + ' partite in corso o finite negli ultimi giorni');
+}
+
+// Dati precedenti: li riprendo dalla pagina già pubblicata, così il calcolo completo non si ripete a ogni esecuzione.
+async function previousData() {
+  const repo = process.env.GITHUB_REPOSITORY; // utente/repository
+  if (!repo) return null;
+  const [owner, name] = repo.split('/');
+  try {
+    const res = await fetch(`https://${owner.toLowerCase()}.github.io/${name}/data/dati.json?t=${Date.now()}`);
+    return res.ok ? await res.text() : null;
+  } catch { return null; }
+}
+
+let liveOk = false;
+try { await liveUpdate(); liveOk = true; } catch (e) { console.log('::warning::live non aggiornato: ' + e.message); writeOut({ generatedAt: new Date().toISOString(), matches: [] }, OUT_LIVE); }
+
+let needFull = true;
+const prev = process.env.FORCE_FULL === '1' ? null : await previousData();
+if (prev) {
+  try {
+    const j = JSON.parse(prev);
+    if (j.generatedAt && Object.keys(j.leagues || {}).length && Date.now() - Date.parse(j.generatedAt) < FULL_EVERY) {
+      fs.mkdirSync(path.dirname(OUT), { recursive: true });
+      fs.writeFileSync(OUT, prev);
+      needFull = false;
+      console.log('Dati completi ancora recenti (' + j.generatedAt + '): non li riscarico.');
+    }
+  } catch { /* file non valido: ricalcolo */ }
+}
+if (needFull) {
+  const ok = await fullUpdate();
+  if (!ok && !liveOk) { console.log('::error::Nessun dato scaricato: non pubblico.'); process.exit(1); }
+  if (!ok && !fs.existsSync(OUT)) writeOut({ generatedAt: new Date().toISOString(), leagues: {} });
+}

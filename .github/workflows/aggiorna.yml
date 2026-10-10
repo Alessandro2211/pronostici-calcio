@@ -2,7 +2,7 @@ name: Aggiorna e pubblica
 
 on:
   schedule:
-    - cron: '*/30 * * * *'   # ogni 30 minuti
+    - cron: '*/5 * * * *'    # ogni 5 minuti: risultati live; il calcolo completo si rinnova ogni 30 minuti
   push:
     branches: [main]
   workflow_dispatch:
@@ -27,6 +27,7 @@ jobs:
       - name: Scarica i dati aggiornati
         env:
           FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
+          FORCE_FULL: ${{ github.event_name == 'push' && '1' || '0' }}
         run: node scripts/update.mjs
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -139,6 +139,17 @@ table.slip th{text-align:left}
 .pick{display:inline-block;min-width:2.1em;text-align:center;font-family:var(--f-display);font-weight:700;font-size:1.25rem;line-height:1.3;border-radius:6px;padding:0 6px;border:1px solid currentColor}
 .pick.s1{color:var(--home)}.pick.sx{color:var(--draw)}.pick.s2{color:var(--away)}.pick.d{color:var(--ink)}.pick.ou{color:var(--home);font-size:1rem}
 .slipsum p{margin:2px 0;font-size:.9rem}
+
+.resrow{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface)}
+.resscore{font-family:var(--f-display);font-weight:700;font-size:1.7rem;line-height:1;font-variant-numeric:tabular-nums}
+.stat{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:2px 9px;border:1px solid currentColor}
+.stat.live{color:var(--away)}.stat.live::before{content:'● ';animation:blink 1.4s steps(2,start) infinite}
+.stat.ft{color:var(--muted)}
+@keyframes blink{to{visibility:hidden}}
+.vd{font-size:.82rem;border-radius:999px;padding:2px 9px;background:var(--surface2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.vd.ok{color:var(--home);font-weight:700}.vd.ko{color:var(--away);font-weight:700}.vd.on{color:var(--warn)}
+.vsum{font-size:.88rem;border-left:3px solid var(--accent);padding:4px 10px;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.stat.live::before{animation:none}}
 @media (prefers-reduced-motion:reduce){.emblem.hold::after{animation:none;opacity:1}}
 @media (max-width:520px){
   .teams{grid-template-columns:1fr;gap:8px}
@@ -160,7 +171,7 @@ table.slip th{text-align:left}
   </header>
   <nav class="tiles" id="tiles" aria-label="Campionati"></nav>
   <section class="panel" id="panel" aria-live="polite"></section>
-  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Classifiche, calendari e marcatori si aggiornano da soli (football-data.org); voti dei giocatori da Sofascore, 10 ottobre 2026. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
+  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Classifiche, calendari e marcatori si aggiornano da soli (football-data.org); voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: aggiornati circa ogni minuto, con possibile ritardo della fonte. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
 </div>
 
 <div class="overlay" id="slip" hidden role="dialog" aria-modal="true" aria-labelledby="slipTitle"><div class="slipbox" id="slipbox"></div></div>
@@ -389,6 +400,7 @@ function f1(x){return x.toFixed(1)}
 function renderTiles(){
   $('tiles').innerHTML=LEAGUES.map(function(l){
     var sub=l.matches.length?('Giornata '+l.round+' · '+l.matches.length+' partite'):'Calendario da caricare';
+    var nl=l.matches.filter(function(m){return m[4]&&m[4].st!=='FT'}).length; if(nl) sub+=' · ● '+nl+' in diretta';
     return '<button class="tile" data-id="'+l.id+'" aria-pressed="'+(l.id===state.league)+'"><span class="emblem" data-lg="'+l.id+'" style="--h:'+l.h+'" aria-hidden="true">'+l.code+'</span><span><b>'+l.name+'</b><small>'+l.country+'</small><small>'+sub+'</small></span></button>';
   }).join('');
 }
@@ -403,7 +415,7 @@ function teamLine(L,n){
 function matchHTML(L,m){
   var p=predict(L,m[2],m[3]), best=p.best, max=Math.max(p.p1,p.px,p.p2);
   var sign=p.sign;
-  var time=m[4]?('Finita '+m[4]+(m[1]?' · '+m[1]:'')):(m[1]?m[1]:'orario da definire');
+  var time=m[1]?m[1]:'orario da definire';
   var covered=(p.H.perf!=null)&&(p.A.perf!=null);
   var qual=covered?'dati aggiornati su entrambe':(p.H.perf!=null||p.A.perf!=null?'dati aggiornati su una squadra':'solo forza storica');
   var conf=max>=0.55?'alta':(max>=0.42?'media':'bassa');
@@ -437,6 +449,7 @@ function matchHTML(L,m){
      +'<div class="pr cx'+(sign==='X'?' top':'')+'"><span>X · pareggio</span><strong>'+pct(p.px)+'%</strong></div>'
      +'<div class="pr c2'+(sign==='2'?' top':'')+'"><span>2 · trasferta</span><strong>'+pct(p.p2)+'%</strong></div>'
    +'</div>'
+   +resultHTML(L,m,p)
    +'<div class="chips"><span class="chip">Doppia <b>'+p.dbl+'</b> '+pct(p.pdbl)+'%</span><span class="chip">Fiducia <b>'+conf+'</b></span><span class="chip">Gol attesi <b>'+f1(p.lh+p.la)+'</b> ('+f1(p.lh)+' – '+f1(p.la)+')</span><span class="chip">GG <b>'+pct(p.gg)+'%</b></span><span class="chip">NG <b>'+pct(1-p.gg)+'%</b></span></div>'
    +ouHTML
    +'<details><summary>Come si arriva a questa stima</summary>'
@@ -450,7 +463,7 @@ function partiteHTML(L){
   if(!L.matches.length) return '<div class="empty">Le partite di questo campionato non sono ancora state caricate. Dimmi quali dati usare e le aggiungo.</div>';
   var days={}, order=[];
   L.matches.forEach(function(m){ if(!days[m[0]]){days[m[0]]=[];order.push(m[0]);} days[m[0]].push(m); });
-  return order.map(function(d){
+  return roundSummary(L)+order.map(function(d){
     return '<div class="day">'+fmtDay(d)+'</div><div class="list">'+days[d].map(function(m){return matchHTML(L,m)}).join('')+'</div>';
   }).join('');
 }
@@ -491,30 +504,58 @@ function votiHTML(L){
    +'</tbody></table></div><p class="tsub" style="margin:10px 0 0">Sono i rating medi di stagione dei giocatori meglio valutati, non i voti di ogni singola partita. '+(R.foot||'')+'</p>';
 }
 
+function outcomeOf(sc){return sc.h>sc.a?'1':(sc.h<sc.a?'2':'X');}
+function bestOU(p){var o=p.ou[0],ob=true,bv=0;p.ou.forEach(function(x){if(x.over>bv){bv=x.over;o=x;ob=true;}if(x.under>bv){bv=x.under;o=x;ob=false;}});return {o:o,ob:ob};}
+// 'ok' centrato, 'ko' sbagliato, 'on' in linea (partita in corso), 'off' fuori linea (partita in corso)
+function evalSign(p,sc){var ok=outcomeOf(sc)===p.sign;return sc.st==='FT'?(ok?'ok':'ko'):(ok?'on':'off');}
+function evalDbl(p,sc){var ok=p.dbl.indexOf(outcomeOf(sc))>=0;return sc.st==='FT'?(ok?'ok':'ko'):(ok?'on':'off');}
+function evalOU(over,line,sc){var g=sc.h+sc.a;
+  if(over) return g>line?'ok':(sc.st==='FT'?'ko':'on');
+  return g>line?'ko':(sc.st==='FT'?'ok':'on');}
+var VLAB={ok:'✓ centrata',ko:'✗ sbagliata',on:'… in linea',off:'… fuori linea'};
+function vd(label,st){return '<span class="vd '+(st==='on'||st==='off'?'on':st)+'">'+label+' '+VLAB[st]+'</span>';}
+function statLabel(sc){return sc.st==='FT'?'<span class="stat ft">Finale</span>':'<span class="stat live">'+(sc.st==='HT'?'Intervallo':'In diretta')+'</span>';}
+function resultHTML(L,m,p){
+  var sc=m[4]; if(!sc) return '';
+  var ous=p.ou.map(function(o){var over=o.over>=o.under;return vd((over?'Over ':'Under ')+String(o.line).replace('.',','),evalOU(over,o.line,sc));}).join('');
+  return '<div class="resrow">'+statLabel(sc)+'<span class="resscore">'+sc.h+'–'+sc.a+'</span>'+vd('Segno '+p.sign,evalSign(p,sc))+vd('Doppia '+p.dbl,evalDbl(p,sc))+ous+'</div>';
+}
+function roundSummary(L){
+  var fin=0,sOk=0,dOk=0,live=0,lOk=0;
+  L.matches.forEach(function(m){ if(!m[4]) return; var p=predict(L,m[2],m[3]);
+    if(m[4].st==='FT'){fin++; if(evalSign(p,m[4])==='ok') sOk++; if(evalDbl(p,m[4])==='ok') dOk++;}
+    else {live++; if(evalSign(p,m[4])==='on') lOk++;} });
+  if(!fin&&!live) return '';
+  return '<div class="vsum">'+(fin?'Finite '+fin+': segni centrati <b>'+sOk+'/'+fin+'</b>, doppie centrate <b>'+dOk+'/'+fin+'</b>.':'')+(live?(fin?' ':'')+'In corso '+live+': segno per ora in linea in <b>'+lOk+'/'+live+'</b>.':'')+'</div>';
+}
+
 function fmtP(x){var v=x*100;return v<0.1?'meno dello 0,1%':(v<10?v.toFixed(1).replace('.',',')+'%':Math.round(v)+'%');}
-function slipWhen(m){return (m[0]==='W'?'weekend':new Date(m[0]+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}))+(m[1]?' · '+m[1]:'')+(m[4]?' · finita '+m[4]:'');}
+function slipWhen(m){return (m[0]==='W'?'weekend':new Date(m[0]+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}))+(m[1]?' · '+m[1]:'')+(m[4]?(m[4].st==='FT'?' · finale ':' · live ')+m[4].h+'–'+m[4].a:'');}
 function slipHTML(L){
   var rows='',cs=1,cd=1;
   L.matches.forEach(function(m){
-    var p=predict(L,m[2],m[3]), mx=Math.max(p.p1,p.px,p.p2), o=p.ou[0], ob=true, bv=0;
-    p.ou.forEach(function(x){if(x.over>bv){bv=x.over;o=x;ob=true;}if(x.under>bv){bv=x.under;o=x;ob=false;}});
+    var p=predict(L,m[2],m[3]), mx=Math.max(p.p1,p.px,p.p2), bo=bestOU(p), o=bo.o, ob=bo.ob, sc=m[4];
+    var ms=sc?'<br><span class="vd '+(evalSign(p,sc)==='ok'?'ok':evalSign(p,sc)==='ko'?'ko':'on')+'">'+VLAB[evalSign(p,sc)]+'</span>':'', md=sc?'<br><span class="vd '+(evalDbl(p,sc)==='ok'?'ok':evalDbl(p,sc)==='ko'?'ko':'on')+'">'+VLAB[evalDbl(p,sc)]+'</span>':'', mo='';
+    if(sc){var eo=evalOU(ob,o.line,sc); mo='<br><span class="vd '+(eo==='ok'?'ok':eo==='ko'?'ko':'on')+'">'+VLAB[eo]+'</span>';}
     cs*=mx; cd*=p.pdbl;
     rows+='<tr><td><b>'+m[2]+'</b> – <b>'+m[3]+'</b><div class="tsub">'+slipWhen(m)+'</div></td>'
-     +'<td><span class="pick s'+(p.sign==='X'?'x':p.sign)+'">'+p.sign+'</span> <span class="tsub">'+pct(mx)+'%</span></td>'
-     +'<td><span class="pick d">'+p.dbl+'</span> <span class="tsub">'+pct(p.pdbl)+'%</span></td>'
-     +'<td><span class="pick ou">'+(ob?'Over':'Under')+' '+String(o.line).replace('.',',')+'</span> <span class="tsub">'+pct(ob?o.over:o.under)+'%</span></td></tr>';
+     +'<td><span class="pick s'+(p.sign==='X'?'x':p.sign)+'">'+p.sign+'</span> <span class="tsub">'+pct(mx)+'%</span>'+ms+'</td>'
+     +'<td><span class="pick d">'+p.dbl+'</span> <span class="tsub">'+pct(p.pdbl)+'%</span>'+md+'</td>'
+     +'<td><span class="pick ou">'+(ob?'Over':'Under')+' '+String(o.line).replace('.',',')+'</span> <span class="tsub">'+pct(ob?o.over:o.under)+'%</span>'+mo+'</td></tr>';
   });
   return '<div class="shead"><div><span class="kicker">Schedina possibile · giornata '+L.round+'</span><h3 id="slipTitle">'+L.name+'</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div>'
    +'<div class="tw"><table class="slip"><thead><tr><th>Partita</th><th>Singola</th><th>Doppia</th><th>Gol</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+   +roundSummary(L)
    +'<div class="slipsum"><p>Tutte le singole giuste: <b>'+fmtP(cs)+'</b></p><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p></div>'
    +'<p class="tsub" style="margin:0">Stime statistiche, non garantiscono nessun esito. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
 }
+var slipId=null;
 function openSlip(id){
-  var L=LEAGUES.filter(function(l){return l.id===id})[0]; if(!L||!L.matches.length) return;
+  slipId=id; var L=LEAGUES.filter(function(l){return l.id===id})[0]; if(!L||!L.matches.length) return;
   $('slipbox').innerHTML=slipHTML(L); $('slip').hidden=false;
   var c=$('slipClose'); if(c) c.focus();
 }
-function closeSlip(){$('slip').hidden=true;}
+function closeSlip(){$('slip').hidden=true;slipId=null;}
 
 function metodoHTML(){
   return '<div class="method"><p>Ogni partita ha una forza per squadra e due medie gol, una per la casa e una per la trasferta. Da lì il modello calcola la probabilità di ogni punteggio e le somma in 1, X e 2.</p>'
@@ -575,6 +616,23 @@ function romeParts(utc){
   var s=new Date(utc).toLocaleString('sv-SE',{timeZone:'Europe/Rome'}); // "2026-10-10 15:00:00"
   return {d:s.slice(0,10),t:s.slice(11,16)};
 }
+function scoreObj(status,score){
+  var st=status==='FINISHED'?'FT':(status==='PAUSED'?'HT':((status==='IN_PLAY'||status==='LIVE')?'LIVE':null));
+  if(!st) return null;
+  return {h:score&&score.h!=null?score.h:0,a:score&&score.a!=null?score.a:0,st:st};
+}
+var COMP_ID={SA:'serie-a',PL:'premier',PD:'liga',BL1:'bundesliga',FL1:'ligue1',DED:'eredivisie',PPL:'primeira'};
+var scoreSig='';
+function applyScores(live){
+  var changed=false;
+  (live.matches||[]).forEach(function(lm){
+    var L=LEAGUES.filter(function(l){return l.id===COMP_ID[lm.comp]})[0]; if(!L) return;
+    var names=L.teams.map(function(t){return t[0]}), hn=NameMatch.matchTeam(lm.home,names), an=NameMatch.matchTeam(lm.away,names);
+    var so=scoreObj(lm.status,lm.score); if(!hn||!an||!so) return;
+    L.matches.forEach(function(m){ if(m[2]===hn&&m[3]===an&&JSON.stringify(m[4])!==JSON.stringify(so)){m[4]=so;changed=true;} });
+  });
+  if(changed){ render(); if(slipId&&!$('slip').hidden){var L2=LEAGUES.filter(function(l){return l.id===slipId})[0]; if(L2) $('slipbox').innerHTML=slipHTML(L2);} }
+}
 function applyLive(data){
   var summary=[], when=data.generatedAt?new Date(data.generatedAt):null;
   Object.keys(data.leagues||{}).forEach(function(id){
@@ -595,7 +653,7 @@ function applyLive(data){
     });
     var ms=(d.matches||[]).filter(function(m){return M(m.home)&&M(m.away)}).map(function(m){
       var p=romeParts(m.utc);
-      return [p.d, (m.utc.indexOf('T00:00:00')>0?null:p.t), M(m.home), M(m.away), (m.status==='FINISHED'&&m.score)?(m.score.h+'–'+m.score.a):null];
+      return [p.d, (m.utc.indexOf('T00:00:00')>0?null:p.t), M(m.home), M(m.away), scoreObj(m.status,m.score)];
     }).sort(function(a,b){return (a[0]+(a[1]||'')).localeCompare(b[0]+(b[1]||''));});
     if(ms.length){
       L.matches=ms; L.round=d.matchday||L.round;
@@ -613,7 +671,12 @@ function applyLive(data){
   if(summary.length){
     var el=$('upd'); if(el&&when) el.textContent='Ultimo aggiornamento dati: '+when.toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'.';
     render();
+    setTimeout(loadScores,300);
   }
+}
+function loadScores(){
+  if(typeof fetch!=='function'||location.protocol==='file:') return;
+  fetch('data/live.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j) applyScores(j);}).catch(function(){});
 }
 function loadLive(){
   if(typeof fetch!=='function'||location.protocol==='file:') return;
@@ -621,8 +684,10 @@ function loadLive(){
 }
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){ try{navigator.serviceWorker.register('sw.js');}catch(_){} }
 loadLive();
+setTimeout(loadScores,2500);
 setInterval(loadLive,10*60*1000);
-document.addEventListener('visibilitychange',function(){if(!document.hidden) loadLive();});
+setInterval(function(){if(!document.hidden) loadScores();},60*1000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLive();setTimeout(loadScores,1500);}});
 </script>
 </body>
 </html>

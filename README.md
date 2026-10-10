@@ -7,13 +7,17 @@ Le percentuali sono stime statistiche e non garantiscono nessun esito.
 
 ## Come si aggiorna da sola
 
-Ogni 30 minuti un workflow di GitHub Actions (`.github/workflows/aggiorna.yml`):
+Ogni 5 minuti un workflow di GitHub Actions (`.github/workflows/aggiorna.yml`) scarica i risultati di ieri, oggi e domani con una sola richiesta (`data/live.json`). Il calcolo completo qui sotto si rinnova ogni 30 minuti:
 
 1. scarica da [football-data.org](https://www.football-data.org) classifiche, calendario e marcatori (`scripts/update.mjs`);
 2. sceglie come giornata corrente la prima con almeno una partita ancora da giocare, quindi passa alla successiva appena finisce l'ultima partita;
 3. pubblica la pagina e i dati su GitHub Pages.
 
-La pagina rilegge i dati all'apertura e ogni 10 minuti. Voti dei giocatori e voto medio di squadra (Sofascore, 10 ottobre 2026) restano quelli incorporati nella pagina.
+La pagina rilegge i dati all'apertura e ogni 10 minuti, e i risultati in diretta ogni minuto. Voti dei giocatori e voto medio di squadra (Sofascore, 10 ottobre 2026) restano quelli incorporati nella pagina.
+
+## Risultati in diretta
+
+Sotto ogni partita iniziata compaiono il risultato (In diretta, Intervallo o Finale) e il confronto con il pronostico: segno, doppia e Over/Under, con ✓ centrata, ✗ sbagliata oppure «in linea» o «fuori linea» finché la partita è in corso. Sopra l'elenco c'è il riepilogo della giornata, e la schedina mostra l'esito di ogni pick. Il piano gratuito di football-data.org può ritardare i punteggi di qualche minuto.
 
 ## Attivazione (una sola volta)
 
