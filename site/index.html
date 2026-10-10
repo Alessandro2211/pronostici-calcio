@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f3d2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Pronostici Calcio Europa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: griglia di campionati in alto (Serie A in prima posizione), sotto il pannello del campionato scelto con partite della giornata, classifica e metodo. */
+:root{
+  --bg:#f2f5f1; --surface:#ffffff; --surface2:#e8eee7; --ink:#13201a; --muted:#56675d; --line:#d5ddd5;
+  --accent:#16733f; --accent-ink:#ffffff;
+  --home:#16733f; --draw:#6b7b86; --away:#c4512b;
+  --warn:#7a5500; --warnbg:#fbf1d6;
+  --f-display:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  --f-body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1612; --surface:#15201a; --surface2:#1c2a22; --ink:#e7efe9; --muted:#97aa9e; --line:#27372d;
+    --accent:#52d08f; --accent-ink:#06210f; --home:#52d08f; --draw:#8fa0ab; --away:#f0906a;
+    --warn:#e8c25a; --warnbg:#2c2610; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1612; --surface:#15201a; --surface2:#1c2a22; --ink:#e7efe9; --muted:#97aa9e; --line:#27372d;
+  --accent:#52d08f; --accent-ink:#06210f; --home:#52d08f; --draw:#8fa0ab; --away:#f0906a;
+  --warn:#e8c25a; --warnbg:#2c2610; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1080px;margin-inline:auto;display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:clamp(2rem,6vw,3rem);line-height:1}
+.kicker{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.lead{color:var(--muted);max-width:62ch;margin:6px 0 0}
+header{display:flex;flex-direction:column;gap:8px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{display:flex;flex-direction:column;gap:10px;align-items:flex-start;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0;transition:border-color .15s,transform .15s}
+.tile:hover{border-color:var(--accent)}
+.tile[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.emblem{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font-family:var(--f-display);font-weight:700;font-size:1.25rem;letter-spacing:.02em;background:hsl(var(--h) 52% 36%);box-shadow:inset 0 0 0 3px hsl(var(--h) 52% 36%),inset 0 0 0 4px rgba(255,255,255,.55)}
+.tile b{font-family:var(--f-display);font-size:1.25rem;line-height:1.05;display:block}
+.tile small{color:var(--muted);font-size:.8rem;display:block}
+
+/* panel */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.phead{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.ptitle{display:flex;gap:12px;align-items:center;min-width:0}
+.ptitle h2{font-size:1.9rem;line-height:1}
+.ptitle span{color:var(--muted);font-size:.85rem}
+.rounds{display:flex;gap:6px;flex-wrap:wrap}
+.rbtn{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:5px 12px;font-size:.85rem;font-weight:500}
+.rbtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.rbtn[disabled]{opacity:.5;cursor:not-allowed}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;font-weight:600;color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.notice{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:9px 12px;font-size:.88rem}
+.day{font-family:var(--f-display);font-size:1.1rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:6px 0 -4px}
+.list{display:flex;flex-direction:column;gap:12px}
+
+/* match */
+.match{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
+.mmeta{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.82rem;flex-wrap:wrap}
+.teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:center}
+.team{display:flex;gap:10px;align-items:center;min-width:0}
+.team.away{flex-direction:row-reverse;text-align:right}
+.mono{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:.95rem;color:#fff;background:hsl(var(--h) 45% 38%)}
+.tname{font-weight:600;line-height:1.15;overflow-wrap:anywhere}
+.tsub{color:var(--muted);font-size:.78rem}
+.score{text-align:center;line-height:1}
+.score b{font-family:var(--f-display);font-size:2.3rem;font-weight:700;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.score small{display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface2)}
+.bar i{display:block;height:100%}
+.b1{background:var(--home)}.bx{background:var(--draw)}.b2{background:var(--away)}
+.probs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-variant-numeric:tabular-nums}
+.pr{display:flex;flex-direction:column;gap:1px;padding:6px 8px;border-radius:8px;border:1px solid transparent}
+.pr span{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pr strong{font-family:var(--f-display);font-size:1.5rem;line-height:1}
+.pr.top{border-color:currentColor}
+.pr.c1{color:var(--home)}.pr.cx{color:var(--draw)}.pr.c2{color:var(--away)}
+.pr span,.pr.top span{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--surface2);border-radius:999px;padding:3px 10px;font-size:.8rem;font-variant-numeric:tabular-nums}
+.chip b{font-weight:600}
+details summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:.88rem;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'+ ';}
+details[open] summary::before{content:'– ';}
+.fx{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:10px}
+.fx div{min-width:0}
+.fx h4{margin:0 0 4px;font-family:var(--f-display);font-size:1.05rem;letter-spacing:.03em}
+.fx p{margin:2px 0;font-size:.85rem;color:var(--muted)}
+.fx p b{color:var(--ink);font-weight:600}
+.na{color:var(--muted);font-style:italic}
+
+/* tables */
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.9rem}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.method p{max-width:68ch;margin:0 0 10px}
+.method ul{margin:0 0 10px;padding-left:20px;max-width:68ch}
+.empty{padding:26px 8px;color:var(--muted);text-align:center}
+footer{font-size:.8rem;color:var(--muted);max-width:80ch}
+
+.score.s1 b{color:var(--home)}.score.sx b{color:var(--draw)}.score.s2 b{color:var(--away)}
+.score b{font-size:2.6rem}
+.score small em{font-style:normal;font-weight:600;color:var(--ink);font-size:.9rem;letter-spacing:.04em}
+.ou{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px 8px;align-items:center;font-variant-numeric:tabular-nums}
+.ol{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.cell{display:flex;justify-content:space-between;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:.88rem;color:var(--ink)}
+.cell.best{border-color:var(--home);color:var(--home);font-weight:700}
+.hint{margin:6px 0 0;font-size:.82rem;color:var(--muted)}
+.emblem{position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation;cursor:pointer}
+.emblem.hold::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--accent);animation:holdring 3s linear forwards;pointer-events:none}
+@keyframes holdring{from{transform:scale(.6);opacity:.15}to{transform:scale(1);opacity:1}}
+.overlay{position:fixed;inset:0;background:rgba(8,16,12,.6);display:flex;align-items:flex-start;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));overflow:auto;z-index:20}
+.slipbox{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-top:4px dashed var(--accent);border-radius:12px;max-width:680px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.slipbox h3{font-size:1.7rem;line-height:1}
+.shead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+table.slip td{white-space:normal;text-align:left;vertical-align:top}
+table.slip th{text-align:left}
+.pick{display:inline-block;min-width:2.1em;text-align:center;font-family:var(--f-display);font-weight:700;font-size:1.25rem;line-height:1.3;border-radius:6px;padding:0 6px;border:1px solid currentColor}
+.pick.s1{color:var(--home)}.pick.sx{color:var(--draw)}.pick.s2{color:var(--away)}.pick.d{color:var(--ink)}.pick.ou{color:var(--home);font-size:1rem}
+.slipsum p{margin:2px 0;font-size:.9rem}
+@media (prefers-reduced-motion:reduce){.emblem.hold::after{animation:none;opacity:1}}
+@media (max-width:520px){
+  .teams{grid-template-columns:1fr;gap:8px}
+  .team.away{flex-direction:row;text-align:left}
+  .score{order:-0;text-align:left;display:flex;gap:8px;align-items:baseline}
+  .score small{margin:0}
+  .panel{padding:14px}
+}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="kicker" id="today"></span>
+    <h1>Pronostici Calcio Europa</h1>
+    <p class="lead">Per ogni campionato, le partite della giornata con segno 1X2, doppia, probabilità e Over/Under. Il calcolo parte da classifica, andamento, voti, fattore campo e marcatori.</p>
+    <p class="hint">Tieni premuto per 3 secondi il simbolo di un campionato per vedere la schedina.</p>
+  </header>
+  <nav class="tiles" id="tiles" aria-label="Campionati"></nav>
+  <section class="panel" id="panel" aria-live="polite"></section>
+  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Classifiche, calendari e marcatori si aggiornano da soli (football-data.org); voti dei giocatori da Sofascore, 10 ottobre 2026. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
+</div>
+
+<div class="overlay" id="slip" hidden role="dialog" aria-modal="true" aria-labelledby="slipTitle"><div class="slipbox" id="slipbox"></div></div>
+<script src="names.js"></script>
+<script>
+/* ---------- DATI ----------
+ team: [nome, forza storica, punti, partite giocate, differenza reti, posizione, gol fatti, {h:[pt,g], a:[pt,g]}]
+ null = dato non disponibile */
+function T(n,pr,pt,g,gd,asr,gf,split){return [n,pr,pt,g,gd,null,gf==null?null:gf,split||null,asr==null?null:asr];}
+var LEAGUES = [
+{ id:'serie-a', name:'Serie A', country:'Italia', code:'IT', h:152, T:2.55, hfa:55, round:6, dates:'10–12 ott', played:5,
+  note:'Classifica, voto medio squadra, calendario e rating dei giocatori da Sofascore. Rendimento in casa e fuori solo per Roma, Inter e Lazio.',
+  teams:[
+   T('Inter',1900,13,5,7,7.99,15,{h:[9,3],a:[4,2]}),T('Napoli',1830,7,5,1,7.30,7),T('Milan',1800,11,5,6,7.59,10),
+   T('Juventus',1810,10,5,4,7.55,8),T('Atalanta',1790,6,5,-2,7.27,5),T('Roma',1790,13,5,11,7.92,14,{h:[7,3],a:[6,2]}),
+   T('Lazio',1740,13,5,5,7.53,8,{h:[4,2],a:[9,3]}),T('Como',1720,10,5,3,7.64,9),T('Bologna',1720,2,5,-3,7.05,3),
+   T('Fiorentina',1690,4,5,-6,6.83,6),T('Torino',1650,4,5,-3,7.12,5),T('Udinese',1640,4,5,-3,7.27,8),
+   T('Genoa',1630,1,5,-7,7.04,3),T('Cagliari',1610,12,5,3,7.54,5),T('Sassuolo',1610,7,5,0,7.43,9),
+   T('Lecce',1580,6,5,-5,7.08,5),T('Parma',1570,4,5,-3,7.05,4),T('Monza',1560,4,5,-4,7.08,8),
+   T('Frosinone',1540,10,5,5,7.61,9),T('Venezia',1540,0,5,-9,6.87,4)],
+  matches:[
+   ['2026-10-10','15:00','Genoa','Fiorentina'],['2026-10-10','18:00','Inter','Parma'],['2026-10-10','20:45','Napoli','Frosinone'],
+   ['2026-10-11','12:30','Como','Roma'],['2026-10-11','15:00','Lazio','Monza'],['2026-10-11','15:00','Lecce','Bologna'],
+   ['2026-10-11','18:00','Sassuolo','Milan'],['2026-10-11','20:45','Cagliari','Juventus'],
+   ['2026-10-12','18:30','Atalanta','Venezia'],['2026-10-12','20:45','Torino','Udinese']],
+  scorers:{Roma:[['Malen',6]],Inter:[['Lautaro Martínez',4],['Çalhanoğlu',2],['F. P. Esposito',2],['Thuram',2]],
+           Lazio:[['Frattesi',3],['Noslin',2]],Frosinone:[['Raimondo',4],['Kvernadze',3]],Monza:[['Varela',4]]},
+  ratings:{label:'Rating medio di stagione, migliori giocatori', src:'Sofascore', stale:false,
+   items:[['Dybala','Roma',8.63,3],['Carnesecchi','Atalanta',8.37,3],['Falcone','Lecce',8.27,3],['Malen','Roma',8.20,3],['Hermoso','Roma',8.00,3],
+    ['Diouf','Inter',7.85,2],['Kamara','Udinese',7.77,3],['Okoye','Udinese',7.77,3],['Frattesi','Lazio',7.70,3],['Çalhanoğlu','Inter',7.70,3],
+    ['Mandas','Lazio',7.67,3],['Cristante','Roma',7.60,3],['Caprile','Cagliari',7.60,3],['Locatelli','Juventus',7.57,3],['Dimarco','Inter',7.53,3],
+    ['Raimondo','Frosinone',7.50,3],['Wesley','Roma',7.50,3],['Ferguson','Bologna',7.47,3],['Bremer','Juventus',7.40,3],['Masini','Frosinone',7.40,3]],
+   foot:''} },
+
+{ id:'premier', name:'Premier League', country:'Inghilterra', code:'EN', h:268, T:2.85, hfa:50, round:6, dates:'10–12 ott', played:5,
+  note:'Classifica, voto medio squadra, orari (ora italiana) e rating dei giocatori da Sofascore.',
+  teams:[
+   T('Man City',1940,15,5,8,7.90),T('Arsenal',1950,12,5,4,7.62),T('Brighton',1760,10,5,11,7.84),T('Brentford',1730,9,5,6,7.64),T('Leeds',1690,9,5,4,7.46),
+   T('Liverpool',1900,9,5,3,7.71),T('Everton',1720,9,5,3,7.73),T('Hull',1600,8,5,2,7.38),T('Newcastle',1810,8,5,0,7.35),T('Chelsea',1840,7,5,-2,7.22),
+   T('Ipswich',1610,6,5,-4,6.89),T('Man Utd',1780,5,5,0,7.10),T('Nott. Forest',1720,5,5,-1,7.35),T('Sunderland',1660,4,5,-4,6.98),
+   T('Crystal Palace',1730,4,5,-5,7.03),T('Aston Villa',1790,4,5,-5,6.82),T('Bournemouth',1730,3,5,-2,7.09),T('Coventry',1590,3,5,-9,6.87),
+   T('Fulham',1710,2,5,-3,7.02),T('Tottenham',1790,2,5,-6,7.22)],
+  matches:[
+   ['2026-10-10','13:30','Arsenal','Leeds'],['2026-10-10','16:00','Aston Villa','Brentford'],['2026-10-10','16:00','Chelsea','Bournemouth'],
+   ['2026-10-10','16:00','Ipswich','Fulham'],['2026-10-10','16:00','Sunderland','Brighton'],['2026-10-10','18:30','Man Utd','Tottenham'],
+   ['2026-10-11','15:00','Crystal Palace','Nott. Forest'],['2026-10-11','15:00','Hull','Everton'],['2026-10-11','17:30','Liverpool','Man City'],
+   ['2026-10-12','21:00','Coventry','Newcastle']],
+  scorers:{},
+  ratings:{label:'Rating medio di stagione, migliori giocatori', src:'Sofascore', stale:false,
+   items:[['Ødegaard','Arsenal',8.00,4],['Haaland','Man City',7.93,4],['Tavernier','Bournemouth',7.93,4],['Jacquet','Liverpool',7.80,4],['Bruno Fernandes','Man Utd',7.73,4],
+    ['Dunk','Brighton',7.70,4],['Emiliano Martínez','Chelsea',7.70,4],['Rogers','Chelsea',7.68,5],['Donnarumma','Man City',7.65,4],['João Pedro','Chelsea',7.63,4],
+    ['Saka','Arsenal',7.63,4],['Xhaka','Sunderland',7.63,4],['Guéhi','Man City',7.60,4],['van Hecke','Tottenham',7.58,4],['Schuster','Brentford',7.57,3],
+    ['Rice','Arsenal',7.55,4],['E. Anderson','Man City',7.55,4],['Verbruggen','Brighton',7.55,4],['Schade','Brentford',7.54,5],['Tzolakis','Hull',7.53,4]],
+   foot:''} },
+
+{ id:'liga', name:'LaLiga', country:'Spagna', code:'ES', h:28, T:2.6, hfa:60, round:8, dates:'10–12 ott', played:7,
+  note:'Classifica e orari da Sofascore (in alcuni casi un’ora di differenza rispetto ad altri siti). Málaga-Espanyol si è giocata venerdì (1-1). Il voto medio di squadra non è disponibile.',
+  teams:[
+   T('Barcelona',1920,21,7,24),T('Atlético',1850,16,7,9),T('Betis',1760,16,7,2),T('Real Madrid',1930,15,7,10),T('Sevilla',1700,13,7,1),
+   T('Alavés',1640,11,7,5),T('Deportivo',1580,10,7,2),T('Real Sociedad',1740,10,7,-4),T('Villarreal',1790,8,7,1),T('Athletic',1770,8,6,1),
+   T('Getafe',1670,8,7,-3),T('Rayo Vallecano',1660,8,7,-5),T('Osasuna',1670,8,7,-7),T('Celta',1700,7,7,2),T('Espanyol',1640,7,7,0),
+   T('Racing Santander',1580,7,7,-10),T('Levante',1620,5,6,-4),T('Elche',1600,5,7,-6),T('Valencia',1690,4,7,-9),T('Málaga',1570,3,7,-9)],
+  matches:[
+   ['2026-10-10','14:00','Rayo Vallecano','Athletic'],['2026-10-10','16:15','Alavés','Atlético'],['2026-10-10','18:30','Barcelona','Getafe'],
+   ['2026-10-10','21:00','Real Madrid','Villarreal'],
+   ['2026-10-11','14:00','Elche','Celta'],['2026-10-11','15:15','Real Sociedad','Deportivo'],['2026-10-11','17:30','Betis','Osasuna'],
+   ['2026-10-11','21:00','Racing Santander','Valencia'],['2026-10-12','21:00','Levante','Sevilla']],
+  scorers:{},
+  ratings:{label:'Rating medio di stagione, migliori giocatori', src:'Sofascore', stale:false,
+   items:[['Raphinha','Barcelona',8.81,7],['Álvaro Valles','Betis',8.47,7],['Lamine Yamal','Barcelona',8.41,7],['Mbappé','Real Madrid',8.06,7],['Bellingham','Real Madrid',7.81,7],
+    ['Camello','Rayo Vallecano',7.76,7],['Aubameyang','Deportivo',7.60,7],['Rodri','Barcelona',7.57,6],['Cubarsí','Barcelona',7.52,5],['Fermín López','Barcelona',7.52,6],
+    ['Natan','Betis',7.52,6],['Arda Güler','Real Madrid',7.49,7],['Bartra','Betis',7.48,5],['Soria','Getafe',7.47,7],['Budimir','Osasuna',7.46,7],
+    ['Remiro','Real Sociedad',7.45,6],['Sivera','Alavés',7.44,7],['Herrero','Málaga',7.43,7],['Terrats','Getafe',7.37,6],['Baena','Atlético',7.36,7]],
+   foot:'Sofascore in questo elenco ha troncato i dati dopo il 42º giocatore.'} },
+
+{ id:'bundesliga', name:'Bundesliga', country:'Germania', code:'DE', h:8, T:3.1, hfa:50, round:5, dates:'9–11 ott', played:4,
+  note:'Classifica, voto medio squadra e orari da Sofascore. Dortmund-Werder si è giocata venerdì (2-2).',
+  teams:[
+   T('Dortmund',1820,13,5,7,7.73),T('Bayern',1920,10,4,12,8.22),T('Freiburg',1700,10,4,9,7.73),T('Werder',1640,8,5,0,7.42),T('Augsburg',1630,7,4,5,7.58),
+   T('Leverkusen',1810,7,4,5,7.59),T('Mainz',1650,7,4,4,7.74),T('Elversberg',1530,7,4,1,7.22),T('Leipzig',1780,6,4,4,7.64),T('Francoforte',1730,5,4,-1,7.21),
+   T('Schalke',1580,5,4,-1,7.40),T('Paderborn',1540,4,4,-2,7.49),T('Colonia',1620,4,4,-3,7.18),T('Hoffenheim',1690,4,4,-3,7.27),T('Stuttgart',1750,3,4,-3,7.15),
+   T('Amburgo',1600,3,4,-11,6.37),T('Union Berlino',1650,1,4,-13,6.66),T('Gladbach',1650,0,4,-10,6.36)],
+  matches:[
+   ['2026-10-10','15:30','Union Berlino','Elversberg'],['2026-10-10','15:30','Mainz','Leverkusen'],['2026-10-10','15:30','Augsburg','Bayern'],
+   ['2026-10-10','15:30','Paderborn','Stuttgart'],['2026-10-10','15:30','Hoffenheim','Amburgo'],['2026-10-10','18:30','Leipzig','Francoforte'],
+   ['2026-10-11','15:30','Colonia','Gladbach'],['2026-10-11','17:30','Freiburg','Schalke']],
+  scorers:{},
+  ratings:{label:'Rating medio di stagione, migliori giocatori', src:'Sofascore', stale:false,
+   items:[['Mittelstädt','Stuttgart',8.20,4],['Dahmen','Augsburg',8.13,4],['Kimmich','Bayern',8.08,4],['Olise','Bayern',8.05,4],['Matanović','Freiburg',8.00,4],
+    ['Karius','Schalke',7.95,4],['Tah','Bayern',7.83,3],['Gutiérrez','Leverkusen',7.75,4],['Noll','Paderborn',7.75,4],['Grüll','Werder',7.70,4],
+    ['Nusa','Leipzig',7.68,4],['Nmecha','Dortmund',7.68,4],['Upamecano','Bayern',7.68,4],['Suzuki','Freiburg',7.65,4],['Becker','Mainz',7.63,4],
+    ['Ginter','Freiburg',7.63,4],['Bredlow','Stuttgart',7.63,4],['Kurucay','Schalke',7.60,4],['Gruda','Leipzig',7.57,3],['Davies','Bayern',7.55,4]],
+   foot:''} },
+
+{ id:'ligue1', name:'Ligue 1', country:'Francia', code:'FR', h:214, T:2.9, hfa:55, round:6, dates:'10–11 ott', played:5,
+  note:'Classifica e voto medio squadra da Sofascore, orari dal programma ufficiale. Lens-Lione si è giocata venerdì (2-1).',
+  teams:[
+   T('Monaco',1780,13,5,5,7.87),T('Lione',1760,11,6,7,7.79),T('Paris FC',1620,11,5,5,7.57),T('Lille',1750,10,5,4,7.60),T('Rennes',1710,10,5,-1,7.53),
+   T('PSG',1900,8,5,1,7.64),T('Lens',1730,7,6,1,7.28),T('Angers',1560,7,5,1,7.46),T('Strasburgo',1670,7,5,0,7.11),T('Le Mans',1540,6,5,0,7.20),
+   T('Auxerre',1600,6,5,-5,6.93),T('Brest',1650,5,5,-1,7.27),T('Lorient',1580,5,5,-1,7.53),T('Tolosa',1640,5,5,-2,7.35),T('Nizza',1700,5,5,-3,7.07),
+   T('Troyes',1540,4,5,-7,7.02),T('Marsiglia',1780,3,5,-1,7.47),T('Le Havre',1570,2,5,-3,7.34)],
+  matches:[
+   ['2026-10-10','17:15','Lille','Le Havre'],['2026-10-10','20:45','PSG','Le Mans'],['2026-10-10','20:45','Monaco','Tolosa'],
+   ['2026-10-10','20:45','Lorient','Paris FC'],['2026-10-10','20:45','Brest','Angers'],
+   ['2026-10-11','15:00','Nizza','Strasburgo'],['2026-10-11','17:15','Rennes','Auxerre'],['2026-10-11','20:45','Troyes','Marsiglia']],
+  scorers:{},
+  ratings:{label:'Rating medio di stagione, migliori giocatori', src:'Sofascore', stale:false,
+   items:[['Hrádecký','Monaco',8.33,3],['Cásseres Jr.','Tolosa',8.30,3],['Vitinha','PSG',8.17,3],['Özer','Lille',8.13,3],['Yassine','Strasburgo',8.10,3],
+    ['Thauvin','Lens',8.03,3],['Lopes','Angers',8.00,3],['Nuamah','Lione',7.85,2],['Chotard','Brest',7.83,3],['Dier','Monaco',7.80,3],
+    ['Restes','Tolosa',7.73,3],['Rongier','Rennes',7.70,3],['Sinayoko','Paris FC',7.67,3],['Athekame','Lione',7.67,3],['Marquinhos','PSG',7.60,3],
+    ['Van den Boomen','Angers',7.57,3],['Mpasi','Le Havre',7.57,3],['Samba','Rennes',7.55,2],['Doumbia','Brest',7.53,3],['Nazinho','Monaco',7.53,3]],
+   foot:'Sofascore ha troncato l’elenco dopo il 43º giocatore.'} },
+
+{ id:'eredivisie', name:'Eredivisie', country:'Paesi Bassi', code:'NL', h:24, T:3.1, hfa:65, round:8, dates:'10–11 ott', played:7,
+  note:'Classifica, voto medio squadra, orari e rating da Sofascore. PSV-Heerenveen si è giocata venerdì (2-0); la classifica che leggo potrebbe non includerla.',
+  teams:[T('AZ',1750,19,7,12,7.78),T('Feyenoord',1790,17,7,18,7.88),T('PSV',1800,16,7,14,7.75),T('Twente',1700,16,7,8,7.74),T('Ajax',1740,14,7,12,7.80),
+   T('Fortuna Sittard',1560,13,7,-1,7.01),T('Excelsior',1500,11,7,6,7.40),T('Groningen',1520,11,7,2,7.42),T('Go Ahead Eagles',1600,10,7,2,7.27),
+   T('Heerenveen',1560,9,7,2,7.68),T('NEC',1650,8,7,-1,7.35),T('Sparta Rotterdam',1580,5,7,-7,7.09),T('Telstar',1480,5,7,-7,7.17),
+   T('Cambuur',1450,5,7,-9,6.93),T('Utrecht',1650,5,7,-13,6.61),T('PEC Zwolle',1520,4,7,-14,6.75),T('ADO Den Haag',1470,2,7,-10,7.00),T('Willem II',1500,2,7,-14,6.85)],
+  matches:[['2026-10-10','16:30','Go Ahead Eagles','Sparta Rotterdam'],['2026-10-10','18:45','Feyenoord','AZ'],['2026-10-10','20:00','Fortuna Sittard','Twente'],
+   ['2026-10-10','21:00','Ajax','NEC'],['2026-10-11','12:15','Utrecht','Willem II'],['2026-10-11','14:30','PEC Zwolle','Cambuur'],
+   ['2026-10-11','14:30','Telstar','ADO Den Haag'],['2026-10-11','16:45','Excelsior','Groningen']],
+  scorers:{},
+  ratings:{label:'Rating medio di stagione, migliori giocatori', src:'Sofascore', stale:false,
+   items:[['Koeman Jr','Telstar',8.40,2],['Zechiël','Feyenoord',8.20,3],['Yegoian','Excelsior',8.20,2],['Vaessen','Groningen',8.20,3],['Schendelaar','PEC Zwolle',8.17,3],
+    ['Branderhorst','Fortuna Sittard',8.17,3],['Valente','Feyenoord',8.10,3],['Tengstedt','Go Ahead Eagles',8.00,3],['Soualhia','Telstar',8.00,2],['Perišić','PSV',7.90,3],
+    ['Dest','PSV',7.90,2],['Meulensteen','Go Ahead Eagles',7.85,2],['N. Fernandez','PSV',7.85,2],['ter Stegen','Ajax',7.85,2],['Bischoff','NEC',7.80,2],
+    ['van der Werff','Groningen',7.77,3],['Koopmeiners','AZ',7.73,3],['Hadj Moussa','Feyenoord',7.73,3],['van Bergen','Groningen',7.70,3],['Chery','NEC',7.70,2]],
+   foot:''} },
+
+{ id:'primeira', name:'Primeira Liga', country:'Portogallo', code:'PT', h:132, T:2.7, hfa:60, round:8, dates:'10–12 ott', played:7,
+  note:'Classifica, voto medio squadra, orari (ora italiana) e rating da Sofascore. Moreirense-Gil Vicente e Braga-Sporting erano di venerdì.',
+  teams:[T('Porto',1790,21,7,15,7.78),T('Sporting',1820,18,8,11,7.57),T('Benfica',1780,16,7,15,7.78),T('Santa Clara',1560,15,7,7,7.44),T('Arouca',1540,11,7,3,7.19),
+   T('Gil Vicente',1580,11,7,1,7.24),T('Académico Viseu',1470,11,7,0,7.30),T('Braga',1700,11,7,0,7.23),T('Estrela Amadora',1530,10,7,0,7.15),
+   T('Alverca',1500,8,7,-2,7.09),T('Marítimo',1500,8,7,-4,6.98),T('Moreirense',1520,8,8,-7,6.86),T('Famalicão',1590,7,7,2,7.17),T('Vitória SC',1650,5,7,-3,7.20),
+   T('Nacional',1560,4,7,-8,7.09),T('Rio Ave',1560,4,7,-10,6.80),T('Casa Pia',1560,4,7,-13,6.93),T('Estoril',1620,2,7,-7,7.03)],
+  matches:[['2026-10-10','16:30','Casa Pia','Santa Clara'],['2026-10-10','19:00','Marítimo','Porto'],['2026-10-10','21:30','Académico Viseu','Estoril'],
+   ['2026-10-11','16:30','Rio Ave','Nacional'],['2026-10-11','19:00','Benfica','Vitória SC'],['2026-10-11','21:30','Arouca','Estrela Amadora'],
+   ['2026-10-12','21:15','Famalicão','Alverca']],
+  scorers:{},
+  ratings:{label:'Rating medio di stagione, migliori giocatori', src:'Sofascore', stale:false,
+   items:[['Prestianni','Benfica',9.30,2],['Pavlidis','Benfica',8.75,2],['Van Der Gouw','Rio Ave',8.03,3],['Gabri Veiga','Porto',7.87,3],['de Arruabarrena','Arouca',7.80,3],
+    ['Kiwior','Porto',7.77,3],['Altimira','Sporting',7.70,3],['Fontán','Arouca',7.67,3],['Léo Santos','Nacional',7.63,3],['Zé Vitor','Nacional',7.57,3],
+    ['Barrenechea','Benfica',7.55,2],['Paciência','Santa Clara',7.53,3],['Antonetti','Estrela Amadora',7.50,2],['Lenglet','Benfica',7.50,2],['Bednarek','Porto',7.47,3],
+    ['Esgaio','Gil Vicente',7.45,2],['Buatu','Gil Vicente',7.45,2],['Sanusi','Porto',7.43,3],['Figueiredo','Alverca',7.37,3],['Diogo Costa','Porto',7.33,3]],
+   foot:''} }
+];
+
+/* ---------- MODELLO ---------- */
+function teamRow(L,name){ var r=L.teams.filter(function(t){return t[0]===name})[0]; return r?{n:r[0],prior:r[1],pts:r[2],g:r[3],gd:r[4],pos:r[5],gf:r[6],split:r[7],asr:r[8]==null?null:r[8]}:null; }
+
+function asrMean(L){
+  if(L._m===undefined){var a=L.teams.filter(function(t){return t[8]!=null}).map(function(t){return t[8]});
+    L._m=a.length?a.reduce(function(x,y){return x+y},0)/a.length:null;}
+  return L._m;
+}
+function teamState(L,name,isHome){
+  var t=teamRow(L,name);
+  var prior=t.prior, g=t.g||0, ppg=null, perf=null, w=0;
+  if(g>0 && (t.pts!=null || t.pos!=null)){
+    ppg = t.pts!=null ? t.pts/g : 1.37+(10.5-t.pos)*0.09;
+    perf = 1700+(ppg-1.37)*170+(t.gd!=null? t.gd/g*55 : 0);
+    w = g/(g+9);
+    if(t.asr!=null && asrMean(L)!=null) perf += (t.asr-asrMean(L))*100;
+  }
+  var R = perf==null ? prior : prior*(1-w)+perf*w;
+  var venue=0, venuePPG=null;
+  if(t.split && ppg!=null){
+    var s=isHome?t.split.h:t.split.a;
+    if(s && s[1]>0){ venuePPG=s[0]/s[1]; venue=(venuePPG-ppg)*30*(s[1]/(s[1]+4)); }
+  }
+  var sc=(L.scorers&&L.scorers[name])||[];
+  var topGoals=sc.reduce(function(a,p){return a+p[1]},0);
+  var boost=1+Math.min(0.06,0.006*topGoals);
+  var rt=(L.ratings&&!L.ratings.stale)?L.ratings.items.filter(function(r){return r[1]===name}):[];
+  var hot=rt.filter(function(r){return r[2]>=7.8}).length;
+  boost*=1+Math.min(0.02,0.007*hot);
+  return {t:t,prior:prior,perf:perf,w:w,R:R+venue,venue:venue,venuePPG:venuePPG,ppg:ppg,boost:boost,topGoals:topGoals,scorers:sc,rt:rt};
+}
+
+function pois(l,k){ var p=Math.exp(-l); for(var i=1;i<=k;i++) p*=l/i; return p; }
+
+function predict(L,home,away){
+  var H=teamState(L,home,true), A=teamState(L,away,false);
+  var d=H.R-A.R+L.hfa, k=0.00115;
+  var lh=(L.T/2)*Math.exp(k*d)*H.boost, la=(L.T/2)*Math.exp(-k*d)*A.boost;
+  var rho=-0.08, N=9, grid=[], tot=0, i, j;
+  for(i=0;i<N;i++){ grid[i]=[]; for(j=0;j<N;j++){
+    var p=pois(lh,i)*pois(la,j), tau=1;
+    if(i===0&&j===0) tau=1-lh*la*rho; else if(i===0&&j===1) tau=1+lh*rho; else if(i===1&&j===0) tau=1+la*rho; else if(i===1&&j===1) tau=1-rho;
+    grid[i][j]=p*tau; tot+=p*tau; } }
+  var p1=0,px=0,p2=0,over=0,gg=0,list=[];
+  for(i=0;i<N;i++) for(j=0;j<N;j++){
+    var q=grid[i][j]/tot; if(i>j)p1+=q; else if(i===j)px+=q; else p2+=q;
+    if(i+j>=3) over+=q; if(i>0&&j>0) gg+=q; list.push([i,j,q]);
+  }
+  list.sort(function(a,b){return b[2]-a[2]});
+  var sign=(p1>=px&&p1>=p2)?'1':(p2>=px?'2':'X');
+  var cons=list.filter(function(x){return sign==='1'?x[0]>x[1]:(sign==='2'?x[0]<x[1]:x[0]===x[1])});
+  var tg=[];list.forEach(function(x){var n=x[0]+x[1];tg[n]=(tg[n]||0)+x[2];});
+  var ou=[1.5,2.5,3.5].map(function(k){var o=0;tg.forEach(function(v,n){if(n>k)o+=v;});return {line:k,over:o,under:1-o};});
+  var pr=[['1',p1],['X',px],['2',p2]].sort(function(a,b){return b[1]-a[1];});
+  var dset=[pr[0][0],pr[1][0]].sort().join('');
+  var dbl=({'12':'12','1X':'1X','2X':'X2'})[dset], pdbl=pr[0][1]+pr[1][1];
+  return {H:H,A:A,lh:lh,la:la,p1:p1,px:px,p2:p2,over:over,gg:gg,sign:sign,top:cons.slice(0,3),best:cons[0],modal:list[0],dbl:dbl,pdbl:pdbl,ou:ou};
+}
+
+function scorerProb(S,lambdaTeam,player){
+  var g=S.t.g||5, ppg=S.ppg==null?1.37:S.ppg;
+  var gf=S.t.gf!=null?S.t.gf:g*(1.35+0.3*(ppg-1.37));
+  var share=Math.min(0.8,player[1]/Math.max(gf,player[1]));
+  return 1-Math.exp(-share*lambdaTeam);
+}
+
+/* ---------- UI ---------- */
+var state={league:'serie-a',tab:'partite'};
+function $(id){return document.getElementById(id)}
+function pct(x){return Math.round(x*100)}
+function hue(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h}
+function abbr(n){var w=n.replace(/[^A-Za-zÀ-ÿ. ]/g,'').split(' ').filter(Boolean);return (w.length>1?w[0][0]+w[1][0]:n.slice(0,3)).toUpperCase()}
+function mono(n){return '<span class="mono" style="--h:'+hue(n)+'" aria-hidden="true">'+abbr(n)+'</span>'}
+function fmtDay(d){if(d==='W')return 'Weekend 9–11 ottobre · orari da definire';return new Date(d+'T12:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}
+function cur(){return LEAGUES.filter(function(l){return l.id===state.league})[0]}
+function f1(x){return x.toFixed(1)}
+
+function renderTiles(){
+  $('tiles').innerHTML=LEAGUES.map(function(l){
+    var sub=l.matches.length?('Giornata '+l.round+' · '+l.matches.length+' partite'):'Calendario da caricare';
+    return '<button class="tile" data-id="'+l.id+'" aria-pressed="'+(l.id===state.league)+'"><span class="emblem" data-lg="'+l.id+'" style="--h:'+l.h+'" aria-hidden="true">'+l.code+'</span><span><b>'+l.name+'</b><small>'+l.country+'</small><small>'+sub+'</small></span></button>';
+  }).join('');
+}
+
+function teamLine(L,n){
+  var t=teamRow(L,n);
+  if(t.pts!=null) return t.pts+' pt in '+t.g+' gare';
+  if(t.pos!=null) return t.pos+'ª in classifica';
+  return 'solo forza storica';
+}
+
+function matchHTML(L,m){
+  var p=predict(L,m[2],m[3]), best=p.best, max=Math.max(p.p1,p.px,p.p2);
+  var sign=p.sign;
+  var time=m[4]?('Finita '+m[4]+(m[1]?' · '+m[1]:'')):(m[1]?m[1]:'orario da definire');
+  var covered=(p.H.perf!=null)&&(p.A.perf!=null);
+  var qual=covered?'dati aggiornati su entrambe':(p.H.perf!=null||p.A.perf!=null?'dati aggiornati su una squadra':'solo forza storica');
+  var conf=max>=0.55?'alta':(max>=0.42?'media':'bassa');
+  if(!(p.H.perf!=null||p.A.perf!=null)&&conf!=='bassa') conf=conf==='alta'?'media':'bassa';
+  var ouHTML='<div class="ou">'+p.ou.map(function(o){var ob=o.over>=o.under;return '<span class="ol">'+String(o.line).replace('.',',')+' gol</span><span class="cell'+(ob?' best':'')+'"><span>Over</span><b>'+pct(o.over)+'%</b></span><span class="cell'+(ob?'':' best')+'"><span>Under</span><b>'+pct(o.under)+'%</b></span>';}).join('')+'</div>';
+  function factors(S,lam,side){
+    var rows='';
+    rows+='<p>Forza storica <b>'+Math.round(S.prior)+'</b>'+(S.perf!=null?' · rendimento attuale <b>'+Math.round(S.perf)+'</b> (peso '+pct(S.w)+'%)':'')+' → forza stimata <b>'+Math.round(S.R)+'</b></p>';
+    if(S.ppg!=null) rows+='<p>Andamento: <b>'+S.ppg.toFixed(2)+'</b> punti a partita'+(S.t.pts==null?' (ricavato dalla posizione)':'')+(S.t.gd!=null?', differenza reti <b>'+(S.t.gd>0?'+':'')+S.t.gd+'</b>':'')+'</p>';
+    else rows+='<p class="na">Andamento non disponibile: conta solo la forza storica.</p>';
+    if(S.venuePPG!=null) rows+='<p>'+(side==='h'?'In casa':'In trasferta')+': <b>'+S.venuePPG.toFixed(2)+'</b> punti a partita ('+(S.venue>=0?'+':'')+S.venue.toFixed(0)+' sulla forza)</p>';
+    else rows+='<p>'+(side==='h'?'Gioca in casa: bonus campo '+L.hfa+' punti Elo':'Gioca in trasferta: nessun bonus campo')+'</p>';
+    if(S.t.asr!=null) rows+='<p>Voto medio squadra (Sofascore): <b>'+S.t.asr.toFixed(2).replace('.',',')+'</b></p>';
+    if(S.scorers.length){
+      rows+='<p>Marcatori in forma: effetto <b>+'+Math.round((S.boost-1)*1000)/10+'%</b> sui gol attesi</p>';
+      rows+=S.scorers.map(function(pl){return '<p>Segna: <b>'+pl[0]+'</b> '+pct(scorerProb(S,lam,pl))+'% ('+pl[1]+' gol)</p>'}).join('');
+    } else rows+='<p class="na">Marcatori: dato non disponibile.</p>';
+    if(S.rt&&S.rt.length) rows+='<p>Giocatori con rating alto (Sofascore): <b>'+S.rt.map(function(r){return r[0]+' '+String(r[2]).replace('.',',')}).join(', ')+'</b></p>';
+    return rows;
+  }
+  return '<article class="match">'
+   +'<div class="mmeta"><span>'+time+'</span><span>Giornata '+L.round+' · '+qual+'</span></div>'
+   +'<div class="teams">'
+     +'<div class="team">'+mono(m[2])+'<div><div class="tname">'+m[2]+'</div><div class="tsub">'+teamLine(L,m[2])+'</div></div></div>'
+     +'<div class="score s'+(sign==='X'?'x':sign)+'"><b>'+sign+'</b><small>doppia <em>'+p.dbl+'</em></small></div>'
+     +'<div class="team away">'+mono(m[3])+'<div><div class="tname">'+m[3]+'</div><div class="tsub">'+teamLine(L,m[3])+'</div></div></div>'
+   +'</div>'
+   +'<div class="bar" role="img" aria-label="Probabilità 1 '+pct(p.p1)+'%, X '+pct(p.px)+'%, 2 '+pct(p.p2)+'%"><i class="b1" style="width:'+p.p1*100+'%"></i><i class="bx" style="width:'+p.px*100+'%"></i><i class="b2" style="width:'+p.p2*100+'%"></i></div>'
+   +'<div class="probs">'
+     +'<div class="pr c1'+(sign==='1'?' top':'')+'"><span>1 · casa</span><strong>'+pct(p.p1)+'%</strong></div>'
+     +'<div class="pr cx'+(sign==='X'?' top':'')+'"><span>X · pareggio</span><strong>'+pct(p.px)+'%</strong></div>'
+     +'<div class="pr c2'+(sign==='2'?' top':'')+'"><span>2 · trasferta</span><strong>'+pct(p.p2)+'%</strong></div>'
+   +'</div>'
+   +'<div class="chips"><span class="chip">Doppia <b>'+p.dbl+'</b> '+pct(p.pdbl)+'%</span><span class="chip">Fiducia <b>'+conf+'</b></span><span class="chip">Gol attesi <b>'+f1(p.lh+p.la)+'</b> ('+f1(p.lh)+' – '+f1(p.la)+')</span><span class="chip">GG <b>'+pct(p.gg)+'%</b></span><span class="chip">NG <b>'+pct(1-p.gg)+'%</b></span></div>'
+   +ouHTML
+   +'<details><summary>Come si arriva a questa stima</summary>'
+     +'<div class="fx"><div><h4>'+m[2]+' (casa)</h4>'+factors(p.H,p.lh,'h')+'</div><div><h4>'+m[3]+' (trasferta)</h4>'+factors(p.A,p.la,'a')+'</div></div>'
+     +'<p class="na" style="margin:10px 0 0;font-size:.85rem">Ammonizioni: Sofascore non le restituisce nei dati che posso leggere. I voti pesano con il voto medio di squadra e con i giocatori dal rating alto.</p>'
+   +'</details>'
+  +'</article>';
+}
+
+function partiteHTML(L){
+  if(!L.matches.length) return '<div class="empty">Le partite di questo campionato non sono ancora state caricate. Dimmi quali dati usare e le aggiungo.</div>';
+  var days={}, order=[];
+  L.matches.forEach(function(m){ if(!days[m[0]]){days[m[0]]=[];order.push(m[0]);} days[m[0]].push(m); });
+  return order.map(function(d){
+    return '<div class="day">'+fmtDay(d)+'</div><div class="list">'+days[d].map(function(m){return matchHTML(L,m)}).join('')+'</div>';
+  }).join('');
+}
+
+function classificaHTML(L){
+  if(!L.teams.length) return '<div class="empty">Classifica non ancora caricata.</div>';
+  var rows=L.teams.map(function(r){var s=teamState(L,r[0],true);return {n:r[0],pts:r[2],g:r[3],gd:r[4],pos:r[5],R:s.R};});
+  rows.sort(function(a,b){
+    if(a.pts!=null&&b.pts!=null&&a.pts!==b.pts) return b.pts-a.pts;
+    if(a.pts!=null&&b.pts!=null&&a.gd!=null&&b.gd!=null&&a.gd!==b.gd) return b.gd-a.gd;
+    if(a.pos!=null&&b.pos!=null) return a.pos-b.pos;
+    return b.R-a.R;
+  });
+  var hasPos=L.teams.some(function(r){return r[5]!=null});
+  return '<div class="tw"><table><thead><tr><th>#</th><th>Squadra</th><th>G</th><th>Pt</th><th>DR</th>'+(hasPos?'<th>Pos.</th>':'')+'<th>Forza stimata</th></tr></thead><tbody>'
+   +rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+r.n+'</td><td>'+(r.g==null?'–':r.g)+'</td><td>'+(r.pts==null?'–':r.pts)+'</td><td>'+(r.gd==null?'–':(r.gd>0?'+':'')+r.gd)+'</td>'+(hasPos?'<td>'+(r.pos==null?'–':r.pos)+'</td>':'')+'<td>'+Math.round(r.R)+'</td></tr>';}).join('')
+   +'</tbody></table></div><p class="tsub" style="margin:10px 0 0">L’ordine è quello dei dati disponibili. Dove mancano punti o posizione, le squadre seguono la forza stimata. La forza stimata è su scala Elo: più alta, più forte.</p>';
+}
+
+function marcatoriHTML(L){
+  var names=Object.keys(L.scorers||{});
+  if(!names.length) return '<div class="empty">La classifica marcatori di questo campionato non è ancora nei dati. Per ora le probabilità di gol dei singoli giocatori compaiono solo nella Serie A.</div>';
+  var all=[]; names.forEach(function(t){L.scorers[t].forEach(function(p){all.push({p:p[0],t:t,g:p[1]})})});
+  all.sort(function(a,b){return b.g-a.g});
+  return '<div class="tw"><table><thead><tr><th>#</th><th>Giocatore</th><th>Squadra</th><th>Gol</th></tr></thead><tbody>'
+   +all.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+r.p+'</td><td>'+r.t+'</td><td>'+r.g+'</td></tr>'}).join('')
+   +'</tbody></table></div><p class="tsub" style="margin:10px 0 0">Sono i marcatori noti dalle classifiche consultate, non l’elenco completo del campionato.</p>';
+}
+
+function votiHTML(L){
+  var R=L.ratings;
+  if(!R) return '<div class="empty">Per questo campionato non ho trovato voti dei giocatori in fonti consultabili.</div>';
+  var items=R.items.slice().sort(function(a,b){return b[2]-a[2]});
+  return '<p class="tsub" style="margin:0 0 10px"><b>'+R.label+'</b> · fonte: '+R.src+'</p>'
+   +(R.stale?'<div class="notice">Dato non aggiornato: non entra nel calcolo.</div>':'')
+   +'<div class="tw"><table><thead><tr><th>#</th><th>Giocatore</th><th>Squadra</th><th>Voto</th><th>Partite</th></tr></thead><tbody>'
+   +items.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2].toFixed(2).replace('.',',')+'</td><td>'+(r[3]==null?'–':r[3])+'</td></tr>'}).join('')
+   +'</tbody></table></div><p class="tsub" style="margin:10px 0 0">Sono i rating medi di stagione dei giocatori meglio valutati, non i voti di ogni singola partita. '+(R.foot||'')+'</p>';
+}
+
+function fmtP(x){var v=x*100;return v<0.1?'meno dello 0,1%':(v<10?v.toFixed(1).replace('.',',')+'%':Math.round(v)+'%');}
+function slipWhen(m){return (m[0]==='W'?'weekend':new Date(m[0]+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}))+(m[1]?' · '+m[1]:'')+(m[4]?' · finita '+m[4]:'');}
+function slipHTML(L){
+  var rows='',cs=1,cd=1;
+  L.matches.forEach(function(m){
+    var p=predict(L,m[2],m[3]), mx=Math.max(p.p1,p.px,p.p2), o=p.ou[0], ob=true, bv=0;
+    p.ou.forEach(function(x){if(x.over>bv){bv=x.over;o=x;ob=true;}if(x.under>bv){bv=x.under;o=x;ob=false;}});
+    cs*=mx; cd*=p.pdbl;
+    rows+='<tr><td><b>'+m[2]+'</b> – <b>'+m[3]+'</b><div class="tsub">'+slipWhen(m)+'</div></td>'
+     +'<td><span class="pick s'+(p.sign==='X'?'x':p.sign)+'">'+p.sign+'</span> <span class="tsub">'+pct(mx)+'%</span></td>'
+     +'<td><span class="pick d">'+p.dbl+'</span> <span class="tsub">'+pct(p.pdbl)+'%</span></td>'
+     +'<td><span class="pick ou">'+(ob?'Over':'Under')+' '+String(o.line).replace('.',',')+'</span> <span class="tsub">'+pct(ob?o.over:o.under)+'%</span></td></tr>';
+  });
+  return '<div class="shead"><div><span class="kicker">Schedina possibile · giornata '+L.round+'</span><h3 id="slipTitle">'+L.name+'</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div>'
+   +'<div class="tw"><table class="slip"><thead><tr><th>Partita</th><th>Singola</th><th>Doppia</th><th>Gol</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+   +'<div class="slipsum"><p>Tutte le singole giuste: <b>'+fmtP(cs)+'</b></p><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p></div>'
+   +'<p class="tsub" style="margin:0">Stime statistiche, non garantiscono nessun esito. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
+}
+function openSlip(id){
+  var L=LEAGUES.filter(function(l){return l.id===id})[0]; if(!L||!L.matches.length) return;
+  $('slipbox').innerHTML=slipHTML(L); $('slip').hidden=false;
+  var c=$('slipClose'); if(c) c.focus();
+}
+function closeSlip(){$('slip').hidden=true;}
+
+function metodoHTML(){
+  return '<div class="method"><p>Ogni partita ha una forza per squadra e due medie gol, una per la casa e una per la trasferta. Da lì il modello calcola la probabilità di ogni punteggio e le somma in 1, X e 2.</p>'
+   +'<ul><li><b>Classifica e andamento:</b> forza storica della squadra mescolata con punti a partita e differenza reti. Più partite sono state giocate, più pesa il campionato in corso.</li>'
+   +'<li><b>Casa e trasferta:</b> bonus campo per ogni campionato. Dove ho il rendimento separato in casa e fuori (Roma, Inter, Lazio) lo applico alla singola partita.</li>'
+   +'<li><b>Marcatori:</b> i gol dei giocatori più prolifici spostano un poco i gol attesi della squadra. La probabilità che un giocatore segni deriva dalla sua quota di gol.</li>'
+   +'<li><b>Segno e doppia:</b> il segno è l’esito più probabile, la doppia unisce i due esiti più probabili. La fiducia dipende dalla distanza tra le probabilità e da quanti dati ho sulle due squadre. Negli Over/Under il verde indica il lato più probabile di ogni linea.</li><li><b>Voti Sofascore:</b> il voto medio della squadra sposta la sua forza stimata (100 punti Elo per ogni punto di voto sopra la media del campionato). Ogni giocatore con rating da 7,8 in su aggiunge lo 0,7% ai gol attesi, fino al 2%. Le ammonizioni non sono nei dati e non pesano.</li></ul>'
+   +'<p>Con poche giornate giocate le stime restano incerte. I campionati con più dati mancanti ricadono sulla forza storica, e lo scrivo su ogni partita.</p></div>';
+}
+
+function renderPanel(){
+  var L=cur();
+  var tabs=[['partite','Partite'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']];
+  var rounds='<button class="rbtn" aria-pressed="true">Giornata '+L.round+' · '+L.dates+'</button>'
+    +'<button class="rbtn" disabled title="Non ancora caricata">Giornata '+(L.round+1)+'</button>'+'<button class="rbtn" data-slip="'+L.id+'">Schedina</button>';
+  var body = state.tab==='partite'?partiteHTML(L):state.tab==='classifica'?classificaHTML(L):state.tab==='marcatori'?marcatoriHTML(L):state.tab==='voti'?votiHTML(L):metodoHTML();
+  $('panel').innerHTML=
+    '<div class="phead"><div class="ptitle"><span class="emblem" data-lg="'+L.id+'" style="--h:'+L.h+'" aria-hidden="true">'+L.code+'</span><div><h2>'+L.name+'</h2><span>'+L.country+'</span></div></div>'
+    +(L.matches.length?'<div class="rounds">'+rounds+'</div>':'')+'</div>'
+    +(L.note&&state.tab!=='metodo'?'<div class="notice">'+L.note+'</div>':'')
+    +'<div class="tabs" role="tablist">'+tabs.map(function(t){return '<button class="tab" role="tab" data-tab="'+t[0]+'" aria-selected="'+(state.tab===t[0])+'">'+t[1]+'</button>'}).join('')+'</div>'
+    +'<div>'+body+'</div>';
+}
+
+function render(){ renderTiles(); renderPanel(); }
+
+var hold={t:null,el:null,x:0,y:0,suppress:false};
+function cancelHold(){if(hold.t){clearTimeout(hold.t);hold.t=null;} if(hold.el){hold.el.classList.remove('hold');hold.el=null;}}
+document.addEventListener('pointerdown',function(e){
+  var em=e.target.closest('.emblem[data-lg]'); if(!em) return;
+  cancelHold(); hold.el=em; hold.x=e.clientX; hold.y=e.clientY; em.classList.add('hold');
+  hold.t=setTimeout(function(){
+    var id=em.getAttribute('data-lg'); hold.t=null; cancelHold();
+    hold.suppress=true; setTimeout(function(){hold.suppress=false;},800);
+    openSlip(id);
+  },3000);
+});
+document.addEventListener('pointermove',function(e){if(hold.t&&Math.abs(e.clientX-hold.x)+Math.abs(e.clientY-hold.y)>14) cancelHold();});
+['pointerup','pointercancel','dragstart'].forEach(function(n){document.addEventListener(n,cancelHold);});
+document.addEventListener('scroll',cancelHold,true);
+document.addEventListener('contextmenu',function(e){if(e.target.closest&&e.target.closest('.emblem')) e.preventDefault();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape') closeSlip();});
+document.addEventListener('click',function(e){
+  if(hold.suppress){hold.suppress=false;e.preventDefault();return;}
+  if(e.target.id==='slip'||e.target.closest('[data-close]')){closeSlip();return;}
+  var sb=e.target.closest('[data-slip]'); if(sb){openSlip(sb.getAttribute('data-slip'));return;}
+  var tile=e.target.closest('.tile'); var tab=e.target.closest('.tab');
+  if(tile){ state.league=tile.getAttribute('data-id'); state.tab='partite'; render(); try{history.replaceState(null,'','#'+state.league)}catch(_){} }
+  else if(tab){ state.tab=tab.getAttribute('data-tab'); renderPanel(); }
+});
+
+try{ var hh=(location.hash||'').slice(1); if(LEAGUES.some(function(l){return l.id===hh})) state.league=hh; }catch(_){}
+$('today').textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+render();
+
+/* ---------- AGGIORNAMENTO AUTOMATICO ---------- */
+function romeParts(utc){
+  var s=new Date(utc).toLocaleString('sv-SE',{timeZone:'Europe/Rome'}); // "2026-10-10 15:00:00"
+  return {d:s.slice(0,10),t:s.slice(11,16)};
+}
+function applyLive(data){
+  var summary=[], when=data.generatedAt?new Date(data.generatedAt):null;
+  Object.keys(data.leagues||{}).forEach(function(id){
+    var L=LEAGUES.filter(function(l){return l.id===id})[0], d=data.leagues[id]; if(!L||!d) return;
+    var names=L.teams.map(function(t){return t[0]});
+    var M=function(t){return NameMatch.matchTeam(t,names)};
+    var rows=(d.standings.total||[]).filter(function(r){return M(r.team)});
+    if(rows.length<names.length*0.7){ L.note=(L.note||'')+' L’aggiornamento automatico non è riuscito per questo campionato: restano i dati del 10 ottobre.'; return; }
+    var home={},away={};
+    (d.standings.home||[]).forEach(function(r){var n=M(r.team);if(n)home[n]=r;});
+    (d.standings.away||[]).forEach(function(r){var n=M(r.team);if(n)away[n]=r;});
+    var maxPlayed=0;
+    rows.forEach(function(r){
+      var n=M(r.team), t=L.teams.filter(function(x){return x[0]===n})[0]; if(!t) return;
+      t[2]=r.pts; t[3]=r.played; t[4]=r.gd; t[5]=r.pos; t[6]=r.gf;
+      t[7]=(home[n]&&away[n])?{h:[home[n].pts,home[n].played],a:[away[n].pts,away[n].played]}:null;
+      if(r.played>maxPlayed) maxPlayed=r.played;
+    });
+    var ms=(d.matches||[]).filter(function(m){return M(m.home)&&M(m.away)}).map(function(m){
+      var p=romeParts(m.utc);
+      return [p.d, (m.utc.indexOf('T00:00:00')>0?null:p.t), M(m.home), M(m.away), (m.status==='FINISHED'&&m.score)?(m.score.h+'–'+m.score.a):null];
+    }).sort(function(a,b){return (a[0]+(a[1]||'')).localeCompare(b[0]+(b[1]||''));});
+    if(ms.length){
+      L.matches=ms; L.round=d.matchday||L.round;
+      var f=new Date(ms[0][0]+'T12:00:00'), l=new Date(ms[ms.length-1][0]+'T12:00:00');
+      var mo=function(x){return x.toLocaleDateString('it-IT',{month:'short'})};
+      L.dates=(f.getDate()===l.getDate()&&f.getMonth()===l.getMonth())?(f.getDate()+' '+mo(f)):(f.getMonth()===l.getMonth()?f.getDate()+'–'+l.getDate()+' '+mo(l):f.getDate()+' '+mo(f)+' – '+l.getDate()+' '+mo(l));
+    }
+    L.played=maxPlayed;
+    var sc={}, ns=0;
+    (d.scorers||[]).forEach(function(s){var n=M(s.team); if(n){(sc[n]=sc[n]||[]).push([s.player,s.goals]);ns++;}});
+    if(ns>=3) L.scorers=sc;
+    L.note='Classifica, calendario, orari (ora italiana) e marcatori si aggiornano da soli da football-data.org. Voti dei giocatori e voto medio di squadra: Sofascore, 10 ottobre 2026, non aggiornati in automatico.';
+    summary.push(id);
+  });
+  if(summary.length){
+    var el=$('upd'); if(el&&when) el.textContent='Ultimo aggiornamento dati: '+when.toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'.';
+    render();
+  }
+}
+function loadLive(){
+  if(typeof fetch!=='function'||location.protocol==='file:') return;
+  fetch('data/dati.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j) applyLive(j);}).catch(function(){});
+}
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){ try{navigator.serviceWorker.register('sw.js');}catch(_){} }
+loadLive();
+setInterval(loadLive,10*60*1000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden) loadLive();});
+</script>
+</body>
+</html>
