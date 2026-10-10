@@ -130,6 +130,7 @@ footer{font-size:.8rem;color:var(--muted);max-width:80ch}
 .emblem{position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation;cursor:pointer}
 .emblem.hold::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--accent);animation:holdring 3s linear forwards;pointer-events:none}
 @keyframes holdring{from{transform:scale(.6);opacity:.15}to{transform:scale(1);opacity:1}}
+.overlay[hidden]{display:none}
 .overlay{position:fixed;inset:0;background:rgba(8,16,12,.6);display:flex;align-items:flex-start;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));overflow:auto;z-index:20}
 .slipbox{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-top:4px dashed var(--accent);border-radius:12px;max-width:680px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .slipbox h3{font-size:1.7rem;line-height:1}
