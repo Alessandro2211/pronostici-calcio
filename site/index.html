@@ -144,6 +144,30 @@ details[open] summary::before{content:'– '}
 .vd.ok{color:var(--good);font-weight:700}.vd.ko{color:var(--bad);font-weight:700}.vd.on{color:var(--warn)}
 .vsum{font-size:.9rem;background:var(--surface);box-shadow:var(--shadow);border-radius:12px;padding:10px 14px;border-left:4px solid var(--accent)}
 
+/* partite giocate: reale contro pronostico */
+.gsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.gsum div{background:var(--surface);box-shadow:var(--shadow);border-radius:14px;padding:10px 14px}
+.gsum span{display:block;font-size:.78rem;color:var(--muted);font-weight:600}
+.gsum b{font-family:var(--f-display);font-size:1.7rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.gsum small{color:var(--muted);font-size:.85rem;margin-left:4px}
+.ghead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;align-items:baseline;margin-top:6px}
+.ghead h3{font-size:1.25rem}
+.ghead small{color:var(--muted);font-size:.85rem}
+.gm{background:var(--surface);box-shadow:var(--shadow);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.gmeta{display:flex;justify-content:space-between;gap:8px;font-size:.8rem;color:var(--muted)}
+.gline{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.gline .gh{text-align:right;font-weight:700;overflow-wrap:anywhere}
+.gline .ga{font-weight:700;overflow-wrap:anywhere}
+.gscore{font-family:var(--f-display);font-weight:800;font-size:1.7rem;line-height:1;font-variant-numeric:tabular-nums;background:var(--surface2);border-radius:10px;padding:6px 12px}
+.gpicks{display:flex;flex-wrap:wrap;gap:6px}
+.pk{display:inline-flex;align-items:baseline;gap:5px;font-size:.84rem;border-radius:999px;padding:4px 11px;font-variant-numeric:tabular-nums;white-space:nowrap;background:var(--surface2)}
+.pk .pl{font-size:.74rem;opacity:.85}
+.pk b{font-family:var(--f-display);font-size:1rem}
+.pk i{font-style:normal;font-size:.74rem;opacity:.8}
+.pk .pm{font-weight:800}
+.pk.ok{color:var(--good);background:color-mix(in srgb,var(--good) 16%,var(--surface));box-shadow:inset 0 0 0 1.5px var(--good)}
+.pk.ko{color:var(--bad);background:color-mix(in srgb,var(--bad) 16%,var(--surface));box-shadow:inset 0 0 0 1.5px var(--bad)}
+
 /* tabelle e testi */
 .tw{overflow-x:auto;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:4px 8px}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.9rem}
@@ -601,6 +625,69 @@ function roundSummary(L){
   return '<div class="vsum">'+(fin?'Finite '+fin+': segni centrati <b>'+sOk+'/'+fin+'</b>, doppie centrate <b>'+dOk+'/'+fin+'</b>.':'')+(live?(fin?' ':'')+'In corso '+live+': segno per ora in linea in <b>'+lOk+'/'+live+'</b>.':'')+'</div>';
 }
 
+/* ---------- PARTITE GIOCATE: risultato reale contro pronostico ---------- */
+var HIST=null;
+function playedList(L){
+  var names=L.teams.map(function(t){return t[0]}), seen={}, out=[];
+  function add(hn,an,d,t,h,a){ if(!hn||!an) return; var k=hn+'|'+an; if(seen[k]) return; seen[k]=1; out.push({k:k,h:hn,a:an,d:d,t:t,sc:{h:h,a:a,st:'FT'}}); }
+  L.matches.forEach(function(m){ if(m[4]&&m[4].st==='FT') add(m[2],m[3],m[0],m[1]||'00:00',m[4].h,m[4].a); });
+  if(HIST&&HIST.leagues&&HIST.leagues[L.id]) HIST.leagues[L.id].forEach(function(e){
+    var p=romeParts(e.utc); add(NameMatch.matchTeam(e.home,names),NameMatch.matchTeam(e.away,names),p.d,p.t,e.h,e.a);
+  });
+  out.sort(function(x,y){return (x.d+x.t).localeCompare(y.d+y.t)});
+  return out;
+}
+// Per ogni partita ricalcolo il pronostico con il modello e la classifica che c'era PRIMA di quel giorno,
+// ricostruita dai risultati precedenti. Voti Sofascore e marcatori restano fuori: sono dati di oggi.
+function backtest(L){
+  var list=playedList(L), sig=L.id+'|'+list.map(function(x){return x.k+x.sc.h+'-'+x.sc.a}).join(',');
+  if(L._bt&&L._bt.sig===sig) return L._bt.items;
+  var st={}, items=[];
+  L.teams.forEach(function(t){st[t[0]]={pts:0,g:0,gf:0,ga:0};});
+  list.forEach(function(x){
+    var H=st[x.h], A=st[x.a]; if(!H||!A) return;
+    var rows=L.teams.map(function(t){var s=st[t[0]]; return [t[0],t[1],s.g?s.pts:null,s.g,s.g?s.gf-s.ga:null,null,s.g?s.gf:null,null,null];});
+    var p=predict({T:L.T,hfa:L.hfa,teams:rows,scorers:{},ratings:null},x.h,x.a), sc=x.sc;
+    items.push({d:x.d,t:x.t,h:x.h,a:x.a,sc:sc,md:Math.max(H.g,A.g)+1,real:outcomeOf(sc),
+      sign:p.sign,psign:Math.max(p.p1,p.px,p.p2),signOk:evalSign(p,sc)==='ok',
+      dbl:p.dbl,pdbl:p.pdbl,dblOk:evalDbl(p,sc)==='ok',
+      ou:p.ou.map(function(o){var over=o.over>=o.under;return {line:o.line,over:over,pc:over?o.over:o.under,ok:evalOU(over,o.line,sc)==='ok'};})});
+    var hg=sc.h, ag=sc.a;
+    H.g++;A.g++;H.gf+=hg;H.ga+=ag;A.gf+=ag;A.ga+=hg;
+    if(hg>ag) H.pts+=3; else if(hg<ag) A.pts+=3; else {H.pts++;A.pts++;}
+  });
+  L._bt={sig:sig,items:items}; return items;
+}
+function pk(label,val,ok,pc){
+  return '<span class="pk '+(ok?'ok':'ko')+'"><span class="pl">'+label+'</span><b>'+val+'</b>'+(pc==null?'':'<i>'+pct(pc)+'%</i>')+'<span class="pm" role="img" aria-label="'+(ok?'centrata':'sbagliata')+'">'+(ok?'✓':'✗')+'</span></span>';
+}
+function giocateHTML(L){
+  var items=backtest(L);
+  if(!items.length) return '<div class="empty">'+(HIST?'In questo campionato non risultano ancora partite finite.':'Le partite giocate arrivano con l’aggiornamento automatico e qui non sono ancora disponibili.')+'</div>';
+  var n=items.length, s=0, d=0, o=0, on=0;
+  items.forEach(function(x){ if(x.signOk) s++; if(x.dblOk) d++; x.ou.forEach(function(u){on++; if(u.ok) o++;}); });
+  var rate=function(v,t){return t?Math.round(v/t*100)+'%':'–';};
+  var out='<div class="gsum"><div><span>Partite giocate</span><b>'+n+'</b></div>'
+    +'<div><span>Segni centrati</span><b>'+s+'/'+n+'</b><small>'+rate(s,n)+'</small></div>'
+    +'<div><span>Doppie centrate</span><b>'+d+'/'+n+'</b><small>'+rate(d,n)+'</small></div>'
+    +'<div><span>Over/Under centrati</span><b>'+o+'/'+on+'</b><small>'+rate(o,on)+'</small></div></div>';
+  var rounds={}, order=[];
+  items.forEach(function(x){ if(!rounds[x.md]){rounds[x.md]=[];order.push(x.md);} rounds[x.md].push(x); });
+  order.sort(function(a,b){return b-a});
+  order.forEach(function(md){
+    var r=rounds[md], rs=r.filter(function(x){return x.signOk}).length, rd=r.filter(function(x){return x.dblOk}).length;
+    out+='<div class="ghead"><h3>Giornata '+md+'</h3><small>segni '+rs+'/'+r.length+' · doppie '+rd+'/'+r.length+'</small></div><div class="list">'
+     +r.map(function(x){
+        var when=new Date(x.d+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+(x.t&&x.t!=='00:00'?' · '+x.t:'');
+        return '<article class="gm"><div class="gmeta"><span>'+when+'</span><span>Esito reale <b>'+x.real+'</b></span></div>'
+         +'<div class="gline"><span class="gh">'+x.h+'</span><span class="gscore">'+x.sc.h+'–'+x.sc.a+'</span><span class="ga">'+x.a+'</span></div>'
+         +'<div class="gpicks">'+pk('Segno',x.sign,x.signOk,x.psign)+pk('Doppia',x.dbl,x.dblOk,x.pdbl)
+         +x.ou.map(function(u){return pk(u.over?'Over':'Under',String(u.line).replace('.',','),u.ok,u.pc);}).join('')+'</div></article>';
+      }).join('')+'</div>';
+  });
+  return out+'<p class="tsub" style="margin:4px 0 0">Verde: il pronostico coincide con il risultato reale. Rosso: non coincide. Il pronostico di ogni partita è ricalcolato con la classifica che c’era prima di quel giorno, ricostruita dai risultati precedenti. Non usa voti Sofascore né marcatori, che sono dati di oggi, quindi può differire dal pronostico mostrato allora.</p>';
+}
+
 function fmtP(x){var v=x*100;return v<0.1?'meno dello 0,1%':(v<10?v.toFixed(1).replace('.',',')+'%':Math.round(v)+'%');}
 function slipWhen(m){return (m[0]==='W'?'weekend':new Date(m[0]+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}))+(m[1]?' · '+m[1]:'')+(m[4]?(m[4].st==='FT'?' · finale ':' · live ')+m[4].h+'–'+m[4].a:'');}
 function slipHTML(L){
@@ -640,10 +727,10 @@ function metodoHTML(){
 
 function renderPanel(){
   var L=cur();
-  var tabs=[['partite','Partite'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']];
+  var tabs=[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']];
   var rounds='<button class="rbtn" aria-pressed="true">Giornata '+L.round+' · '+L.dates+'</button>'
     +'<button class="rbtn" disabled title="Non ancora caricata">Giornata '+(L.round+1)+'</button>'+'<button class="rbtn" data-slip="'+L.id+'">Schedina</button>';
-  var body = state.tab==='partite'?partiteHTML(L):state.tab==='classifica'?classificaHTML(L):state.tab==='marcatori'?marcatoriHTML(L):state.tab==='voti'?votiHTML(L):metodoHTML();
+  var body = state.tab==='partite'?partiteHTML(L):state.tab==='giocate'?giocateHTML(L):state.tab==='classifica'?classificaHTML(L):state.tab==='marcatori'?marcatoriHTML(L):state.tab==='voti'?votiHTML(L):metodoHTML();
   $('panel').innerHTML=
     '<div class="phead"><div class="ptitle"><span class="emblem" data-lg="'+L.id+'" aria-hidden="true">'+flag(L.id)+'</span><div><h2>'+L.name+'</h2><span>'+L.country+'</span></div></div>'
     +(L.matches.length?'<div class="rounds">'+rounds+'</div>':'')+'</div>'
@@ -759,8 +846,13 @@ function loadScores(){
   if(typeof fetch!=='function'||location.protocol==='file:') return;
   fetch('data/live.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j) applyScores(j);}).catch(function(){});
 }
+function loadHistory(){
+  if(typeof fetch!=='function'||location.protocol==='file:') return;
+  fetch('data/storico.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j){HIST=j; renderPanel();}}).catch(function(){});
+}
 function loadLive(){
   if(typeof fetch!=='function'||location.protocol==='file:') return;
+  loadHistory();
   fetch('data/dati.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j) applyLive(j);}).catch(function(){});
 }
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){ try{navigator.serviceWorker.register('sw.js');}catch(_){} }

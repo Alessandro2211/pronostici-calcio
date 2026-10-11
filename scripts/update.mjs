@@ -17,6 +17,7 @@ const NameMatch = require(path.join(root, 'site', 'names.js'));
 
 const OUT = path.join(root, 'site', 'data', 'dati.json');
 const OUT_LIVE = path.join(root, 'site', 'data', 'live.json');
+const OUT_HIST = path.join(root, 'site', 'data', 'storico.json');
 const CODES = { 'serie-a': 'ita.1', premier: 'eng.1', liga: 'esp.1', bundesliga: 'ger.1', ligue1: 'fra.1', eredivisie: 'ned.1', primeira: 'por.1' };
 const FULL_EVERY = 30 * 60 * 1000;
 const DAY = 86400000;
@@ -165,6 +166,35 @@ async function fetchDays(code, offsets, now) {
 }
 const key = (m) => m.home.name + '|' + m.away.name;
 
+// Storico delle partite finite della stagione (serve alla voce "Giocate" della pagina).
+// ESPN dà un solo giorno per richiesta: la prima volta si scarica tutta la stagione, poi solo gli ultimi giorni.
+const hist = { covered: {}, leagues: {} }; // leagues[id] = Map(key -> {utc, home, away, h, a})
+const addHist = (id, m) => {
+  if (m.status !== 'FINISHED' || !m.score || m.score.h == null || m.score.a == null) return;
+  if (!hist.leagues[id]) hist.leagues[id] = new Map();
+  hist.leagues[id].set(key(m), { utc: m.utc, home: m.home, away: m.away, h: m.score.h, a: m.score.a });
+};
+async function backfillHist(id, code, now) {
+  const to = ymd(now - DAY).replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3');
+  const startT = hist.covered[id] ? Date.parse(hist.covered[id]) - 3 * DAY : Date.parse(seasonYear() + '-08-01');
+  const n = Math.min(240, Math.max(1, Math.ceil((now - startT) / DAY)));
+  const queue = Array.from({ length: n + 1 }, (_, i) => -n + i); // da n giorni fa a oggi
+  let failed = 0, read = 0;
+  const worker = async () => {
+    while (queue.length) {
+      const k = queue.shift();
+      try {
+        const sb = await espn(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${ymd(now + k * DAY)}`);
+        (sb.events || []).forEach((ev) => { const m = toMatch(ev); if (m) { addHist(id, m); read++; } });
+      } catch { failed++; }
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  if (failed) console.log('::warning::storico ' + id + ': ' + failed + ' giorni non letti, li riprovo al prossimo giro');
+  else hist.covered[id] = to; // avanzo solo se non mancano giorni
+  console.log('storico ' + id + ': ' + (hist.leagues[id] ? hist.leagues[id].size : 0) + ' partite finite (' + (n + 1) + ' giorni letti)');
+}
+
 function buildLeague(L, code, all, standings, now) {
   const names = L.teams.map((t) => t[0]);
   const groups = groupRounds(all);
@@ -215,6 +245,20 @@ if (process.env.GITHUB_REPOSITORY) {
 }
 const athleteNames = { ...((prevAny && prevAny.athletes) || {}) };
 
+if (process.env.GITHUB_REPOSITORY) {
+  const [owner, name] = process.env.GITHUB_REPOSITORY.split('/');
+  try {
+    const res = await fetch(`https://${owner.toLowerCase()}.github.io/${name}/data/storico.json?t=${now}`);
+    if (res.ok) {
+      const j = await res.json();
+      hist.covered = j.covered || {};
+      for (const [id, list] of Object.entries(j.leagues || {})) {
+        hist.leagues[id] = new Map(list.map((e) => [e.home.name + '|' + e.away.name, e]));
+      }
+    }
+  } catch { /* nessuno storico precedente: si ricostruisce */ }
+}
+
 let result = null;
 if (prev) {
   // esecuzione leggera: aggiorno stato e punteggi delle partite già note
@@ -226,7 +270,8 @@ if (prev) {
       const recent = await fetchDays(CODES[L.id], [-1, 0, 1], now);
       const byKey = new Map(recent.map((m) => [key(m), m]));
       d.matches = d.matches.map((m) => { const u = byKey.get(key(m)); return u ? { ...m, status: u.status, score: u.score, minute: u.minute } : m; });
-      recent.forEach((m) => pushLive(L.id, m));
+      recent.forEach((m) => { pushLive(L.id, m); addHist(L.id, m); });
+      if (!hist.covered[L.id]) await backfillHist(L.id, CODES[L.id], now);
       if (d.matches.length && !d.matches.some((m) => PENDING.includes(m.status))) roundOver = true;
     } catch (e) { console.log('::warning::' + L.id + ' risultati non aggiornati: ' + e.message); }
   }
@@ -252,8 +297,9 @@ if (!result) {
         console.log('::warning::marcatori ' + L.id + ': ' + e.message);
         result.leagues[L.id].scorers = (prevAny && prevAny.leagues && prevAny.leagues[L.id] && prevAny.leagues[L.id].scorers) || [];
       }
-      all.forEach((m) => pushLive(L.id, m));
-      const r = result.leagues[L.id];
+      all.forEach((m) => { pushLive(L.id, m); addHist(L.id, m); });
+      await backfillHist(L.id, code, now);
+      const r =result.leagues[L.id];
       console.log(L.id + ': giornata ' + r.matchday + ', ' + r.matches.length + ' partite, classifica ' + standings.total.length + ' squadre, ' + r.scorers.length + ' marcatori (' + all.length + ' partite lette)');
     } catch (e) {
       console.log('::warning::' + L.id + ' non aggiornato: ' + e.message);
@@ -264,4 +310,7 @@ if (!result) {
 if (!Object.keys(result.leagues).length) { console.log('::error::Nessun campionato scaricato: non pubblico.'); process.exit(1); }
 writeJson(OUT, result);
 writeJson(OUT_LIVE, live);
-console.log('Scritti dati.json (' + Object.keys(result.leagues).length + ' campionati) e live.json (' + live.matches.length + ' partite)');
+const histOut = { generatedAt: iso, covered: hist.covered, leagues: {} };
+for (const [id, mp] of Object.entries(hist.leagues)) histOut.leagues[id] = [...mp.values()].sort((a, b) => Date.parse(a.utc) - Date.parse(b.utc));
+writeJson(OUT_HIST, histOut);
+console.log('Scritti dati.json (' + Object.keys(result.leagues).length + ' campionati), live.json (' + live.matches.length + ' partite) e storico.json');
