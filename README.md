@@ -9,9 +9,9 @@ Le percentuali sono stime statistiche e non garantiscono nessun esito.
 
 Ogni 5 minuti un workflow di GitHub Actions (`.github/workflows/aggiorna.yml`) esegue `scripts/update.mjs`, che:
 
-1. legge da ESPN (API pubblica, nessuna chiave) calendario e risultati degli ultimi 7 e dei prossimi 10 giorni di ogni campionato;
-2. sceglie come giornata corrente la prima con almeno una partita ancora da giocare, quindi passa alla successiva appena finisce l'ultima partita;
-3. legge la classifica (al massimo ogni 30 minuti);
+1. a ogni esecuzione legge da ESPN (API pubblica, nessuna chiave) i risultati di ieri, oggi e domani di ogni campionato;
+2. ogni 30 minuti, o appena finisce l'ultima partita di una giornata, rilegge il calendario da 4 giorni fa a 8 giorni avanti e le classifiche. ESPN accetta una sola data per richiesta, quindi lo script la interroga giorno per giorno;
+3. sceglie come giornata corrente la prima con almeno una partita ancora da giocare;
 4. pubblica la pagina e i dati su GitHub Pages.
 
 La pagina rilegge i dati all'apertura e ogni 10 minuti, e i risultati in diretta ogni minuto.

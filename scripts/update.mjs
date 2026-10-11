@@ -1,6 +1,9 @@
 // Scarica calendario, risultati e classifiche dall'API pubblica di ESPN (nessuna chiave) e scrive:
 //  - site/data/dati.json  (giornata corrente, classifica)
 //  - site/data/live.json  (partite in corso o finite negli ultimi giorni)
+// ESPN accetta una sola data per richiesta (gli intervalli danno errore), quindi:
+//  - a ogni esecuzione: solo ieri, oggi e domani (21 richieste) per i risultati;
+//  - ogni 30 minuti, o quando finisce l'ultima partita di una giornata: finestra completa e classifiche.
 // Uso: node scripts/update.mjs
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,7 +18,7 @@ const NameMatch = require(path.join(root, 'site', 'names.js'));
 const OUT = path.join(root, 'site', 'data', 'dati.json');
 const OUT_LIVE = path.join(root, 'site', 'data', 'live.json');
 const CODES = { 'serie-a': 'ita.1', premier: 'eng.1', liga: 'esp.1', bundesliga: 'ger.1', ligue1: 'fra.1', eredivisie: 'ned.1', primeira: 'por.1' };
-const STANDINGS_EVERY = 30 * 60 * 1000;
+const FULL_EVERY = 30 * 60 * 1000;
 const DAY = 86400000;
 const PENDING = ['TIMED', 'IN_PLAY', 'PAUSED'];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -111,77 +114,107 @@ function parseStandings(json) {
   return total > 0 ? rows : []; // classifica a zero = stagione non ancora caricata da ESPN: la ignoro
 }
 
+
+// Elenco di partite per più giorni, con poche richieste in parallelo.
+async function fetchDays(code, offsets, now) {
+  const byId = new Map();
+  const queue = [...offsets];
+  const worker = async () => {
+    while (queue.length) {
+      const k = queue.shift();
+      const sb = await espn(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${ymd(now + k * DAY)}`);
+      (sb.events || []).forEach((ev) => { const m = toMatch(ev); if (m) byId.set(ev.id || m.home.name + m.away.name + m.utc, m); });
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  return [...byId.values()];
+}
+const key = (m) => m.home.name + '|' + m.away.name;
+
+function buildLeague(L, code, all, standings, now) {
+  const names = L.teams.map((t) => t[0]);
+  const groups = groupRounds(all);
+  const pick = pickRound(groups);
+  let matchday = null;
+  if (pick && standings.total.length) {
+    const gp = new Map(standings.total.map((r) => [NameMatch.matchTeam(r.team, names), r.played]));
+    let best = 0;
+    pick.list.forEach((m) => [m.home, m.away].forEach((t) => {
+      const n = NameMatch.matchTeam(t, names);
+      if (n && gp.has(n)) best = Math.max(best, gp.get(n) + (PENDING.includes(m.status) ? 1 : 0));
+    }));
+    matchday = best || null;
+  }
+  if (pick && !matchday && L.matches.length) { // classifica non valida: conto rispetto alla giornata incorporata nella pagina
+    const first = L.matches[0][0];
+    const ai = groups.findIndex((g) => g.some((m) => Math.abs(Date.parse(m.utc) - Date.parse(first + 'T12:00:00Z')) <= 1.5 * DAY));
+    if (ai >= 0) matchday = L.round + (pick.idx - ai);
+  }
+  const bad = new Set();
+  pick && pick.list.forEach((m) => [m.home, m.away].forEach((t) => { if (!NameMatch.matchTeam(t, names)) bad.add(t.name); }));
+  standings.total.forEach((r) => { if (!NameMatch.matchTeam(r.team, names)) bad.add(r.team.name); });
+  if (bad.size) console.log('::warning::' + L.id + ' squadre non abbinate: ' + [...bad].join(', '));
+  return { code, matchday, standings, matches: pick ? pick.list : [], scorers: [] };
+}
+
 const leagues = siteData();
 const now = Date.now();
-const result = { generatedAt: new Date(now).toISOString(), standingsAt: null, leagues: {} };
-const live = { generatedAt: result.generatedAt, matches: [] };
+const iso = new Date(now).toISOString();
+const live = { generatedAt: iso, matches: [] };
+const pushLive = (id, m) => {
+  if (['IN_PLAY', 'PAUSED', 'FINISHED'].includes(m.status) && now - Date.parse(m.utc) < 2 * DAY)
+    live.matches.push({ comp: id, status: m.status, utc: m.utc, minute: m.minute, home: m.home, away: m.away, score: m.score });
+};
 
-// Classifiche precedenti, riprese dalla pagina già pubblicata, per non riscaricarle a ogni esecuzione.
+// Dati precedenti, ripresi dalla pagina già pubblicata.
 let prev = null;
 if (process.env.FORCE_FULL !== '1' && process.env.GITHUB_REPOSITORY) {
   const [owner, name] = process.env.GITHUB_REPOSITORY.split('/');
   try {
     const res = await fetch(`https://${owner.toLowerCase()}.github.io/${name}/data/dati.json?t=${now}`);
-    if (res.ok) { const j = await res.json(); if (j.standingsAt && now - Date.parse(j.standingsAt) < STANDINGS_EVERY) prev = j; }
+    if (res.ok) { const j = await res.json(); if (j.fullAt && now - Date.parse(j.fullAt) < FULL_EVERY && Object.keys(j.leagues || {}).length) prev = j; }
   } catch { /* nessuna copia precedente */ }
 }
-if (prev) console.log('Classifiche recenti (' + prev.standingsAt + '): le riuso.');
-let standingsFetched = false;
 
-for (const L of leagues) {
-  const code = CODES[L.id];
-  const names = L.teams.map((t) => t[0]);
-  try {
-    const sb = await espn(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${ymd(now - 7 * DAY)}-${ymd(now + 10 * DAY)}&limit=500`);
-    const all = (sb.events || []).map(toMatch).filter(Boolean);
-    const groups = groupRounds(all);
-    const pick = pickRound(groups);
+let result = null;
+if (prev) {
+  // esecuzione leggera: aggiorno stato e punteggi delle partite già note
+  result = prev; result.generatedAt = iso;
+  let roundOver = false;
+  for (const L of leagues) {
+    const d = result.leagues[L.id]; if (!d) continue;
+    try {
+      const recent = await fetchDays(CODES[L.id], [-1, 0, 1], now);
+      const byKey = new Map(recent.map((m) => [key(m), m]));
+      d.matches = d.matches.map((m) => { const u = byKey.get(key(m)); return u ? { ...m, status: u.status, score: u.score, minute: u.minute } : m; });
+      recent.forEach((m) => pushLive(L.id, m));
+      if (d.matches.length && !d.matches.some((m) => PENDING.includes(m.status))) roundOver = true;
+    } catch (e) { console.log('::warning::' + L.id + ' risultati non aggiornati: ' + e.message); }
+  }
+  if (roundOver) { console.log('Giornata conclusa in almeno un campionato: aggiornamento completo.'); prev = null; result = null; live.matches = []; }
+  else console.log('Aggiornamento leggero: ' + live.matches.length + ' partite in corso o finite.');
+}
 
-    let standings = prev && prev.leagues[L.id] ? prev.leagues[L.id].standings : null;
-    if (!standings || !standings.total.length) {
-      try {
-        const st = await espn(`https://site.api.espn.com/apis/v2/sports/soccer/${code}/standings`);
-        standings = { total: parseStandings(st), home: [], away: [] };
-        standingsFetched = true;
-      } catch (e) { console.log('::warning::classifica ' + L.id + ': ' + e.message); standings = { total: [], home: [], away: [] }; }
+if (!result) {
+  result = { generatedAt: iso, fullAt: iso, leagues: {} };
+  for (const L of leagues) {
+    const code = CODES[L.id];
+    try {
+      const all = await fetchDays(code, Array.from({ length: 13 }, (_, i) => i - 4), now);
+      let standings = { total: [], home: [], away: [] };
+      try { standings.total = parseStandings(await espn(`https://site.api.espn.com/apis/v2/sports/soccer/${code}/standings`)); }
+      catch (e) { console.log('::warning::classifica ' + L.id + ': ' + e.message); }
+      result.leagues[L.id] = buildLeague(L, code, all, standings, now);
+      all.forEach((m) => pushLive(L.id, m));
+      const r = result.leagues[L.id];
+      console.log(L.id + ': giornata ' + r.matchday + ', ' + r.matches.length + ' partite, classifica ' + standings.total.length + ' squadre (' + all.length + ' partite lette)');
+    } catch (e) {
+      console.log('::warning::' + L.id + ' non aggiornato: ' + e.message);
     }
-
-    // numero della giornata: dalla classifica se valida, altrimenti rispetto alla giornata incorporata nella pagina
-    let matchday = null;
-    if (pick && standings.total.length) {
-      const gp = new Map(standings.total.map((r) => [NameMatch.matchTeam(r.team, names), r.played]));
-      let best = 0;
-      pick.list.forEach((m) => [m.home, m.away].forEach((t) => {
-        const n = NameMatch.matchTeam(t, names);
-        if (n && gp.has(n)) best = Math.max(best, gp.get(n) + (PENDING.includes(m.status) ? 1 : 0));
-      }));
-      matchday = best || null;
-    }
-    if (pick && !matchday && L.matches.length) {
-      const first = L.matches[0][0];
-      const ai = groups.findIndex((g) => g.some((m) => Math.abs(Date.parse(m.utc) - Date.parse(first + 'T12:00:00Z')) <= 1.5 * DAY));
-      if (ai >= 0) matchday = L.round + (pick.idx - ai);
-    }
-
-    result.leagues[L.id] = {
-      code, matchday, standings,
-      matches: pick ? pick.list : [], scorers: [],
-    };
-    all.filter((m) => ['IN_PLAY', 'PAUSED', 'FINISHED'].includes(m.status) && now - Date.parse(m.utc) < 2 * DAY)
-      .forEach((m) => live.matches.push({ comp: L.id, status: m.status, utc: m.utc, minute: m.minute, home: m.home, away: m.away, score: m.score }));
-
-    const bad = new Set();
-    pick && pick.list.forEach((m) => [m.home, m.away].forEach((t) => { if (!NameMatch.matchTeam(t, names)) bad.add(t.name); }));
-    standings.total.forEach((r) => { if (!NameMatch.matchTeam(r.team, names)) bad.add(r.team.name); });
-    if (bad.size) console.log('::warning::' + L.id + ' squadre non abbinate: ' + [...bad].join(', '));
-    console.log(L.id + ': giornata ' + matchday + ', ' + (pick ? pick.list.length : 0) + ' partite, classifica ' + standings.total.length + ' squadre');
-  } catch (e) {
-    console.log('::warning::' + L.id + ' non aggiornato: ' + e.message);
   }
 }
 
 if (!Object.keys(result.leagues).length) { console.log('::error::Nessun campionato scaricato: non pubblico.'); process.exit(1); }
-result.standingsAt = standingsFetched || !prev ? result.generatedAt : prev.standingsAt;
 writeJson(OUT, result);
 writeJson(OUT_LIVE, live);
 console.log('Scritti dati.json (' + Object.keys(result.leagues).length + ' campionati) e live.json (' + live.matches.length + ' partite)');
