@@ -9,7 +9,7 @@
   }
   // nome nella pagina -> varianti (già normalizzate) che possono comparire nell'API
   var ALIAS = {
-    'Inter': ['internazionale milano', 'inter milan', 'inter'],
+    'Inter': ['internazionale milano', 'internazionale', 'inter milan', 'inter'],
     'Milan': ['milan'], 'Roma': ['roma'], 'Lazio': ['lazio'], 'Napoli': ['napoli'],
     'Como': ['como'], 'Monza': ['monza'], 'Venezia': ['venezia'],
     'Man City': ['manchester city', 'man city'], 'Man Utd': ['manchester united', 'man united', 'man utd'],
@@ -58,7 +58,7 @@
     var best = null, bestLen = 0;
     function pad(s) { return ' ' + s + ' '; }
     siteNames.forEach(function (n) {
-      var variants = (ALIAS[n] || []).concat([norm(n)]);
+      var variants = (ALIAS[n] || []).map(norm).concat([norm(n)]);
       variants.forEach(function (v) {
         if (!v) return;
         cands.forEach(function (c) {

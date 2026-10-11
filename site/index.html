@@ -172,7 +172,7 @@ table.slip th{text-align:left}
   </header>
   <nav class="tiles" id="tiles" aria-label="Campionati"></nav>
   <section class="panel" id="panel" aria-live="polite"></section>
-  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Classifiche, calendari e marcatori si aggiornano da soli (football-data.org); voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: aggiornati circa ogni minuto, con possibile ritardo della fonte. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
+  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Calendari, risultati e classifiche si aggiornano da soli (ESPN); marcatori e voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: aggiornati circa ogni minuto, con possibile ritardo della fonte. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
 </div>
 
 <div class="overlay" id="slip" hidden role="dialog" aria-modal="true" aria-labelledby="slipTitle"><div class="slipbox" id="slipbox"></div></div>
@@ -515,7 +515,7 @@ function evalOU(over,line,sc){var g=sc.h+sc.a;
   return g>line?'ko':(sc.st==='FT'?'ok':'on');}
 var VLAB={ok:'✓ centrata',ko:'✗ sbagliata',on:'… in linea',off:'… fuori linea'};
 function vd(label,st){return '<span class="vd '+(st==='on'||st==='off'?'on':st)+'">'+label+' '+VLAB[st]+'</span>';}
-function statLabel(sc){return sc.st==='FT'?'<span class="stat ft">Finale</span>':'<span class="stat live">'+(sc.st==='HT'?'Intervallo':'In diretta')+'</span>';}
+function statLabel(sc){return sc.st==='FT'?'<span class="stat ft">Finale</span>':'<span class="stat live">'+(sc.st==='HT'?'Intervallo':'In diretta'+(sc.min?' '+sc.min:''))+'</span>';}
 function resultHTML(L,m,p){
   var sc=m[4]; if(!sc) return '';
   var ous=p.ou.map(function(o){var over=o.over>=o.under;return vd((over?'Over ':'Under ')+String(o.line).replace('.',','),evalOU(over,o.line,sc));}).join('');
@@ -617,19 +617,19 @@ function romeParts(utc){
   var s=new Date(utc).toLocaleString('sv-SE',{timeZone:'Europe/Rome'}); // "2026-10-10 15:00:00"
   return {d:s.slice(0,10),t:s.slice(11,16)};
 }
-function scoreObj(status,score){
+function scoreObj(status,score,minute){
   var st=status==='FINISHED'?'FT':(status==='PAUSED'?'HT':((status==='IN_PLAY'||status==='LIVE')?'LIVE':null));
   if(!st) return null;
-  return {h:score&&score.h!=null?score.h:0,a:score&&score.a!=null?score.a:0,st:st};
+  var o={h:score&&score.h!=null?score.h:0,a:score&&score.a!=null?score.a:0,st:st}; if(minute&&st==='LIVE') o.min=minute; return o;
 }
 var COMP_ID={SA:'serie-a',PL:'premier',PD:'liga',BL1:'bundesliga',FL1:'ligue1',DED:'eredivisie',PPL:'primeira'};
 var scoreSig='';
 function applyScores(live){
   var changed=false;
   (live.matches||[]).forEach(function(lm){
-    var L=LEAGUES.filter(function(l){return l.id===COMP_ID[lm.comp]})[0]; if(!L) return;
+    var L=LEAGUES.filter(function(l){return l.id===(COMP_ID[lm.comp]||lm.comp)})[0]; if(!L) return;
     var names=L.teams.map(function(t){return t[0]}), hn=NameMatch.matchTeam(lm.home,names), an=NameMatch.matchTeam(lm.away,names);
-    var so=scoreObj(lm.status,lm.score); if(!hn||!an||!so) return;
+    var so=scoreObj(lm.status,lm.score,lm.minute); if(!hn||!an||!so) return;
     L.matches.forEach(function(m){ if(m[2]===hn&&m[3]===an&&JSON.stringify(m[4])!==JSON.stringify(so)){m[4]=so;changed=true;} });
   });
   if(changed){ render(); if(slipId&&!$('slip').hidden){var L2=LEAGUES.filter(function(l){return l.id===slipId})[0]; if(L2) $('slipbox').innerHTML=slipHTML(L2);} }
@@ -641,7 +641,7 @@ function applyLive(data){
     var names=L.teams.map(function(t){return t[0]});
     var M=function(t){return NameMatch.matchTeam(t,names)};
     var rows=(d.standings.total||[]).filter(function(r){return M(r.team)});
-    if(rows.length<names.length*0.7){ L.note=(L.note||'')+' L’aggiornamento automatico non è riuscito per questo campionato: restano i dati del 10 ottobre.'; return; }
+    if(rows.length&&rows.length<names.length*0.7){ L.note=(L.note||'')+' L’aggiornamento automatico non è riuscito per questo campionato: restano i dati del 10 ottobre.'; return; }
     var home={},away={};
     (d.standings.home||[]).forEach(function(r){var n=M(r.team);if(n)home[n]=r;});
     (d.standings.away||[]).forEach(function(r){var n=M(r.team);if(n)away[n]=r;});
@@ -654,7 +654,7 @@ function applyLive(data){
     });
     var ms=(d.matches||[]).filter(function(m){return M(m.home)&&M(m.away)}).map(function(m){
       var p=romeParts(m.utc);
-      return [p.d, (m.utc.indexOf('T00:00:00')>0?null:p.t), M(m.home), M(m.away), scoreObj(m.status,m.score)];
+      return [p.d, (m.utc.indexOf('T00:00')>0?null:p.t), M(m.home), M(m.away), scoreObj(m.status,m.score,m.minute)];
     }).sort(function(a,b){return (a[0]+(a[1]||'')).localeCompare(b[0]+(b[1]||''));});
     if(ms.length){
       L.matches=ms; L.round=d.matchday||L.round;
@@ -662,11 +662,11 @@ function applyLive(data){
       var mo=function(x){return x.toLocaleDateString('it-IT',{month:'short'})};
       L.dates=(f.getDate()===l.getDate()&&f.getMonth()===l.getMonth())?(f.getDate()+' '+mo(f)):(f.getMonth()===l.getMonth()?f.getDate()+'–'+l.getDate()+' '+mo(l):f.getDate()+' '+mo(f)+' – '+l.getDate()+' '+mo(l));
     }
-    L.played=maxPlayed;
+    if(maxPlayed) L.played=maxPlayed;
     var sc={}, ns=0;
     (d.scorers||[]).forEach(function(s){var n=M(s.team); if(n){(sc[n]=sc[n]||[]).push([s.player,s.goals]);ns++;}});
     if(ns>=3) L.scorers=sc;
-    L.note='Classifica, calendario, orari (ora italiana) e marcatori si aggiornano da soli da football-data.org. Voti dei giocatori e voto medio di squadra: Sofascore, 10 ottobre 2026, non aggiornati in automatico.';
+    L.note=rows.length?'Calendario, orari (ora italiana), risultati e classifica si aggiornano da soli (ESPN). Marcatori, voti dei giocatori e voto medio di squadra: Sofascore, 10 ottobre 2026, non aggiornati in automatico.':'Calendario, orari (ora italiana) e risultati si aggiornano da soli (ESPN). La classifica non è disponibile da ESPN e resta ferma al 10 ottobre, come marcatori e voti (Sofascore).';
     summary.push(id);
   });
   if(summary.length){
