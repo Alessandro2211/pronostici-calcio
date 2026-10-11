@@ -1,5 +1,5 @@
 // Scarica calendario, risultati e classifiche dall'API pubblica di ESPN (nessuna chiave) e scrive:
-//  - site/data/dati.json  (giornata corrente, classifica)
+//  - site/data/dati.json  (giornata corrente, classifica, marcatori)
 //  - site/data/live.json  (partite in corso o finite negli ultimi giorni)
 // ESPN accetta una sola data per richiesta (gli intervalli danno errore), quindi:
 //  - a ogni esecuzione: solo ieri, oggi e domani (21 richieste) per i risultati;
@@ -103,8 +103,17 @@ function pickRound(groups) {
   return groups.length ? { idx: groups.length - 1, list: near(groups[groups.length - 1]) } : null;
 }
 
+function standingsEntries(json) {
+  return (json.children && json.children[0] && json.children[0].standings && json.children[0].standings.entries) || [];
+}
+// id ESPN della squadra -> nome (serve per collegare i marcatori alla squadra)
+function teamIds(json) {
+  const m = new Map();
+  standingsEntries(json).forEach((e) => { if (e.team && e.team.id != null) m.set(String(e.team.id), tm(e.team)); });
+  return m;
+}
 function parseStandings(json) {
-  const entries = (json.children && json.children[0] && json.children[0].standings && json.children[0].standings.entries) || [];
+  const entries = standingsEntries(json);
   const stat = (e, ...names) => { for (const n of names) { const s = (e.stats || []).find((x) => x.name === n); if (s && s.value != null) return +s.value; } return null; };
   const rows = entries.map((e, i) => ({
     team: tm(e.team), pos: stat(e, 'rank') || i + 1, played: stat(e, 'gamesPlayed'), pts: stat(e, 'points'),
@@ -114,6 +123,31 @@ function parseStandings(json) {
   return total > 0 ? rows : []; // classifica a zero = stagione non ancora caricata da ESPN: la ignoro
 }
 
+
+// Classifica marcatori (servizio "core" di ESPN): i giocatori arrivano come riferimenti, i nomi si leggono una volta e si conservano.
+const seasonYear = () => { const d = new Date(); return d.getUTCMonth() >= 6 ? d.getUTCFullYear() : d.getUTCFullYear() - 1; };
+const refId = (ref, kind) => { const m = new RegExp('/' + kind + '/(\\d+)').exec((ref && ref.$ref) || ''); return m ? m[1] : null; };
+const httpsRef = (r) => r.replace(/^http:/, 'https:');
+async function fetchScorers(code, idToTeam, names) {
+  const base = `https://sports.core.api.espn.com/v2/sports/soccer/leagues/${code}/seasons/${seasonYear()}`;
+  const lj = await espn(`${base}/types/1/leaders?limit=20`);
+  const cat = (lj.categories || []).find((c) => c.name === 'goals') || (lj.categories || []).find((c) => c.name === 'goalsLeaders');
+  const leaders = ((cat && cat.leaders) || []).slice(0, 20);
+  const out = [];
+  const queue = leaders.map((l) => ({ l, aid: refId(l.athlete, 'athletes'), tid: refId(l.team, 'teams') }));
+  const worker = async () => {
+    while (queue.length) {
+      const { l, aid, tid } = queue.shift();
+      if (!aid) continue;
+      if (!names[aid]) { try { const a = await espn(httpsRef(l.athlete.$ref)); names[aid] = a.displayName || a.fullName || null; } catch { /* nome non disponibile */ } }
+      let team = idToTeam.get(tid);
+      if (!team && l.team && l.team.$ref) { try { const t = await espn(httpsRef(l.team.$ref)); team = tm(t); idToTeam.set(tid, team); } catch { /* squadra non disponibile */ } }
+      if (names[aid] && team) out.push({ player: names[aid], team, goals: +l.value });
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  return out.sort((a, b) => b.goals - a.goals);
+}
 
 // Elenco di partite per più giorni, con poche richieste in parallelo.
 async function fetchDays(code, offsets, now) {
@@ -167,14 +201,19 @@ const pushLive = (id, m) => {
 };
 
 // Dati precedenti, ripresi dalla pagina già pubblicata.
-let prev = null;
-if (process.env.FORCE_FULL !== '1' && process.env.GITHUB_REPOSITORY) {
+let prev = null, prevAny = null;
+if (process.env.GITHUB_REPOSITORY) {
   const [owner, name] = process.env.GITHUB_REPOSITORY.split('/');
   try {
     const res = await fetch(`https://${owner.toLowerCase()}.github.io/${name}/data/dati.json?t=${now}`);
-    if (res.ok) { const j = await res.json(); if (j.fullAt && now - Date.parse(j.fullAt) < FULL_EVERY && Object.keys(j.leagues || {}).length) prev = j; }
+    if (res.ok) {
+      const j = await res.json();
+      prevAny = j; // anche se vecchio: serve per i nomi dei giocatori e, se ESPN non risponde, per i marcatori
+      if (process.env.FORCE_FULL !== '1' && j.fullAt && now - Date.parse(j.fullAt) < FULL_EVERY && Object.keys(j.leagues || {}).length) prev = j;
+    }
   } catch { /* nessuna copia precedente */ }
 }
+const athleteNames = { ...((prevAny && prevAny.athletes) || {}) };
 
 let result = null;
 if (prev) {
@@ -196,18 +235,26 @@ if (prev) {
 }
 
 if (!result) {
-  result = { generatedAt: iso, fullAt: iso, leagues: {} };
+  result = { generatedAt: iso, fullAt: iso, athletes: athleteNames, leagues: {} };
   for (const L of leagues) {
     const code = CODES[L.id];
     try {
       const all = await fetchDays(code, Array.from({ length: 13 }, (_, i) => i - 4), now);
       let standings = { total: [], home: [], away: [] };
-      try { standings.total = parseStandings(await espn(`https://site.api.espn.com/apis/v2/sports/soccer/${code}/standings`)); }
-      catch (e) { console.log('::warning::classifica ' + L.id + ': ' + e.message); }
+      let idToTeam = new Map();
+      try {
+        const st = await espn(`https://site.api.espn.com/apis/v2/sports/soccer/${code}/standings`);
+        standings.total = parseStandings(st); idToTeam = teamIds(st);
+      } catch (e) { console.log('::warning::classifica ' + L.id + ': ' + e.message); }
       result.leagues[L.id] = buildLeague(L, code, all, standings, now);
+      try { result.leagues[L.id].scorers = await fetchScorers(code, idToTeam, athleteNames); }
+      catch (e) {
+        console.log('::warning::marcatori ' + L.id + ': ' + e.message);
+        result.leagues[L.id].scorers = (prevAny && prevAny.leagues && prevAny.leagues[L.id] && prevAny.leagues[L.id].scorers) || [];
+      }
       all.forEach((m) => pushLive(L.id, m));
       const r = result.leagues[L.id];
-      console.log(L.id + ': giornata ' + r.matchday + ', ' + r.matches.length + ' partite, classifica ' + standings.total.length + ' squadre (' + all.length + ' partite lette)');
+      console.log(L.id + ': giornata ' + r.matchday + ', ' + r.matches.length + ' partite, classifica ' + standings.total.length + ' squadre, ' + r.scorers.length + ' marcatori (' + all.length + ' partite lette)');
     } catch (e) {
       console.log('::warning::' + L.id + ' non aggiornato: ' + e.message);
     }

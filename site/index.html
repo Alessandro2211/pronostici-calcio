@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07161A">
+<script>try{var __p=JSON.parse(localStorage.getItem("pronostici.prefs")||"{}");if(__p.theme==="light"||__p.theme==="dark")document.documentElement.setAttribute("data-theme",__p.theme)}catch(e){}</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
@@ -19,7 +20,7 @@
    Layout: campionati come bandiere in alto, sotto l'elenco partite a righe (squadre in colonna, segno a destra). */
 :root{
   --bg:#E8EFEB; --surface:#FFFFFF; --surface2:#DDE7E2; --ink:#0B1F23; --muted:#52686A; --line:#C8D5CF;
-  --accent:#F5A524; --accent-ink:#1B1100; --accent-text:#8A5000;
+  --accent:#F5A524; --accent-ink:#1B1100; --accent-text:#8A5000; --lv-sel:#FFB63D;
   --home:#1F6FE0; --draw:#6B7F8B; --away:#B02E86; --sign-ink:#FFFFFF;
   --good:#0A7F62; --bad:#C22F4F; --warn:#7A5200; --warnbg:#FBEFD0;
   --shadow:0 1px 2px rgba(11,31,35,.08),0 8px 20px -10px rgba(11,31,35,.22);
@@ -29,7 +30,7 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#07161A; --surface:#0E2227; --surface2:#163038; --ink:#E6F1EE; --muted:#8BA7A8; --line:#21404A;
-    --accent:#FFB63D; --accent-ink:#1B1100; --accent-text:#FFC561;
+    --accent:#FFB63D; --accent-ink:#1B1100; --accent-text:#FFC561; --lv-sel:#7A4600;
     --home:#6AA6FF; --draw:#8FA5B2; --away:#F08AD0; --sign-ink:#06141A;
     --good:#3DDBB0; --bad:#FF7F9B; --warn:#F0C766; --warnbg:#2B2410;
     --shadow:0 0 0 1px #21404A; color-scheme:dark;
@@ -37,7 +38,7 @@
 }
 :root[data-theme="dark"]{
   --bg:#07161A; --surface:#0E2227; --surface2:#163038; --ink:#E6F1EE; --muted:#8BA7A8; --line:#21404A;
-  --accent:#FFB63D; --accent-ink:#1B1100; --accent-text:#FFC561;
+  --accent:#FFB63D; --accent-ink:#1B1100; --accent-text:#FFC561; --lv-sel:#7A4600;
   --home:#6AA6FF; --draw:#8FA5B2; --away:#F08AD0; --sign-ink:#06141A;
   --good:#3DDBB0; --bad:#FF7F9B; --warn:#F0C766; --warnbg:#2B2410;
   --shadow:0 0 0 1px #21404A; color-scheme:dark;
@@ -64,7 +65,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .tile small{color:var(--muted);font-size:.78rem;display:block}
 .tile[aria-pressed="true"] small{color:var(--bg);opacity:.75}
 .tile small.lv{color:var(--accent-text);font-weight:700;opacity:1}
-.tile[aria-pressed="true"] small.lv{color:var(--accent);opacity:1}
+.tile[aria-pressed="true"] small.lv{color:var(--lv-sel);opacity:1}
 .emblem{position:relative;flex:none;display:block;width:44px;height:30px;border-radius:6px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.18);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation;cursor:pointer}
 .emblem svg{display:block;width:100%;height:100%}
 .emblem.hold{overflow:visible}
@@ -168,6 +169,22 @@ table.slip th{text-align:left}
 .pick.s1{color:var(--home)}.pick.sx{color:var(--draw)}.pick.s2{color:var(--away)}.pick.d{color:var(--ink)}.pick.ou{color:var(--good);font-size:1rem}
 .slipsum p{margin:2px 0;font-size:.9rem}
 
+/* impostazioni */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.gear{flex:none;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.gear:hover{background:var(--surface2)}
+.gear svg{width:22px;height:22px;display:block}
+.slipbox.plain{border-top:0}
+.set{display:flex;flex-direction:column;gap:8px;padding-block:6px}
+.set + .set{border-top:1px solid var(--line);padding-top:14px}
+.set b{font-family:var(--f-display);font-size:1.05rem}
+.set p{margin:0;color:var(--muted);font-size:.85rem}
+.seg{display:inline-flex;flex-wrap:wrap;align-self:flex-start;gap:2px;background:var(--surface2);border-radius:12px;padding:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:8px 16px;font-weight:600;color:var(--muted)}
+.seg button[aria-checked="true"]{background:var(--accent);color:var(--accent-ink)}
+.tiles.list{grid-template-columns:1fr}
+.tiles.list .tile{padding:10px 14px}
+.tiles.list .tt{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 12px}
 @media (max-width:520px){
   .match{padding:14px}
   .score b{width:58px;height:58px;font-size:2.1rem}
@@ -182,16 +199,17 @@ table.slip th{text-align:left}
 <body>
 <div class="wrap">
   <header>
-    <span class="kicker" id="today"></span>
+    <div class="top"><span class="kicker" id="today"></span><button class="gear" id="gear" type="button" aria-label="Impostazioni" aria-haspopup="dialog"></button></div>
     <h1>Pronostici Calcio Europa</h1>
     <p class="lead">Per ogni campionato, le partite della giornata con segno 1X2, doppia, probabilità e Over/Under. Il calcolo parte da classifica, andamento, voti, fattore campo e marcatori.</p>
     <p class="hint">Tieni premuto per 3 secondi il simbolo di un campionato per vedere la schedina.</p>
   </header>
   <nav class="tiles" id="tiles" aria-label="Campionati"></nav>
   <section class="panel" id="panel" aria-live="polite"></section>
-  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Calendari, risultati e classifiche si aggiornano da soli (ESPN); marcatori e voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: aggiornati circa ogni minuto, con possibile ritardo della fonte. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
+  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Calendari, risultati, classifiche e marcatori si aggiornano da soli (ESPN); voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: aggiornati circa ogni minuto, con possibile ritardo della fonte. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
 </div>
 
+<div class="overlay" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle"><div class="slipbox plain" id="setbox"></div></div>
 <div class="overlay" id="slip" hidden role="dialog" aria-modal="true" aria-labelledby="slipTitle"><div class="slipbox" id="slipbox"></div></div>
 <script src="names.js"></script>
 <script>
@@ -425,7 +443,33 @@ var FLAGS={
  primeira:'<rect width="30" height="20" fill="#FF0000"/><rect width="12" height="20" fill="#006600"/><circle cx="12" cy="10" r="3.6" fill="#FFE000"/><circle cx="12" cy="10" r="2" fill="#FF0000"/><circle cx="12" cy="10" r="1" fill="#fff"/>'
 };
 function flag(id){return '<svg viewBox="0 0 30 20" preserveAspectRatio="none" aria-hidden="true" focusable="false">'+(FLAGS[id]||'')+'</svg>';}
+/* ---------- IMPOSTAZIONI ---------- */
+var prefs={theme:'auto',view:'grid'};
+try{var sp=JSON.parse(localStorage.getItem('pronostici.prefs')||'{}'); if(sp.theme==='light'||sp.theme==='dark') prefs.theme=sp.theme; if(sp.view==='list') prefs.view='list';}catch(_){}
+function savePrefs(){try{localStorage.setItem('pronostici.prefs',JSON.stringify(prefs));}catch(_){}}
+function applyTheme(){var r=document.documentElement; if(prefs.theme==='auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme',prefs.theme);}
+function gearSVG(){
+  var n=8,s=2*Math.PI/n,ri=7.4,ro=10,pts=[];
+  for(var i=0;i<n;i++){[[-.3,ri],[-.17,ro],[.17,ro],[.3,ri]].forEach(function(d){var a=i*s+d[0]*s;pts.push((12+d[1]*Math.cos(a)).toFixed(2)+','+(12+d[1]*Math.sin(a)).toFixed(2));});}
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true" focusable="false"><polygon points="'+pts.join(' ')+'"/><circle cx="12" cy="12" r="3.2"/></svg>';
+}
+function seg(label,key,opts){
+  return '<div class="seg" role="radiogroup" aria-label="'+label+'">'+opts.map(function(o){return '<button type="button" role="radio" aria-checked="'+(prefs[key]===o[0])+'" data-pref="'+key+'" data-val="'+o[0]+'">'+o[1]+'</button>';}).join('')+'</div>';
+}
+function settingsHTML(){
+  return '<div class="shead"><h3 id="setTitle">Impostazioni</h3><button class="rbtn" id="setClose" type="button" data-close-set="1">Chiudi</button></div>'
+   +'<div class="set"><b>Tema</b><p>Con Sistema la pagina segue il tema del telefono o del computer.</p>'+seg('Tema','theme',[['auto','Sistema'],['light','Chiaro'],['dark','Scuro']])+'</div>'
+   +'<div class="set"><b>Icone dei campionati</b><p>Come mostrare i campionati in alto.</p>'+seg('Icone dei campionati','view',[['grid','Griglia'],['list','Elenco']])+'</div>';
+}
+function openSettings(){ $('setbox').innerHTML=settingsHTML(); $('settings').hidden=false; var c=$('setClose'); if(c) c.focus(); }
+function closeSettings(){ if($('settings').hidden) return; $('settings').hidden=true; var g=$('gear'); if(g) g.focus(); }
+function setPref(k,v){
+  if(k==='theme'){prefs.theme=v;applyTheme();} else if(k==='view'){prefs.view=v;renderTiles();}
+  savePrefs(); $('setbox').innerHTML=settingsHTML(); var a=document.querySelector('#setbox [aria-checked="true"][data-pref="'+k+'"]'); if(a) a.focus();
+}
+
 function renderTiles(){
+  $('tiles').className='tiles'+(prefs.view==='list'?' list':'');
   $('tiles').innerHTML=LEAGUES.map(function(l){
     var sub=l.matches.length?('Giornata '+l.round+' · '+l.matches.length+' partite'):'Calendario da caricare';
     var nl=l.matches.filter(function(m){return m[4]&&m[4].st!=='FT'}).length;
@@ -513,12 +557,12 @@ function classificaHTML(L){
 
 function marcatoriHTML(L){
   var names=Object.keys(L.scorers||{});
-  if(!names.length) return '<div class="empty">La classifica marcatori di questo campionato non è ancora nei dati. Per ora le probabilità di gol dei singoli giocatori compaiono solo nella Serie A.</div>';
+  if(!names.length) return '<div class="empty">La classifica marcatori di questo campionato non è ancora disponibile.</div>';
   var all=[]; names.forEach(function(t){L.scorers[t].forEach(function(p){all.push({p:p[0],t:t,g:p[1]})})});
   all.sort(function(a,b){return b.g-a.g});
   return '<div class="tw"><table><thead><tr><th>#</th><th>Giocatore</th><th>Squadra</th><th>Gol</th></tr></thead><tbody>'
    +all.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+r.p+'</td><td>'+r.t+'</td><td>'+r.g+'</td></tr>'}).join('')
-   +'</tbody></table></div><p class="tsub" style="margin:10px 0 0">Sono i marcatori noti dalle classifiche consultate, non l’elenco completo del campionato.</p>';
+   +'</tbody></table></div><p class="tsub" style="margin:10px 0 0">'+(L.scorersLive?'Primi marcatori del campionato, aggiornati in automatico (ESPN).':'Sono i marcatori noti dalle classifiche consultate, non l’elenco completo del campionato.')+'</p>';
 }
 
 function votiHTML(L){
@@ -625,7 +669,12 @@ document.addEventListener('pointermove',function(e){if(hold.t&&Math.abs(e.client
 ['pointerup','pointercancel','dragstart'].forEach(function(n){document.addEventListener(n,cancelHold);});
 document.addEventListener('scroll',cancelHold,true);
 document.addEventListener('contextmenu',function(e){if(e.target.closest&&e.target.closest('.emblem')) e.preventDefault();});
-document.addEventListener('keydown',function(e){if(e.key==='Escape') closeSlip();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSlip();closeSettings();}});
+document.addEventListener('click',function(e){
+  if(e.target.closest('#gear')){openSettings();return;}
+  var o=e.target.closest('[data-pref]'); if(o){setPref(o.getAttribute('data-pref'),o.getAttribute('data-val'));return;}
+  if(e.target.id==='settings'||e.target.closest('[data-close-set]')) closeSettings();
+});
 document.addEventListener('click',function(e){
   if(hold.suppress){hold.suppress=false;e.preventDefault();return;}
   if(e.target.id==='slip'||e.target.closest('[data-close]')){closeSlip();return;}
@@ -636,6 +685,7 @@ document.addEventListener('click',function(e){
 });
 
 try{ var hh=(location.hash||'').slice(1); if(LEAGUES.some(function(l){return l.id===hh})) state.league=hh; }catch(_){}
+applyTheme(); $('gear').innerHTML=gearSVG();
 $('today').textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 render();
 
@@ -692,8 +742,11 @@ function applyLive(data){
     if(maxPlayed) L.played=maxPlayed;
     var sc={}, ns=0;
     (d.scorers||[]).forEach(function(s){var n=M(s.team); if(n){(sc[n]=sc[n]||[]).push([s.player,s.goals]);ns++;}});
-    if(ns>=3) L.scorers=sc;
-    L.note=rows.length?'Calendario, orari (ora italiana), risultati e classifica si aggiornano da soli (ESPN). Marcatori, voti dei giocatori e voto medio di squadra: Sofascore, 10 ottobre 2026, non aggiornati in automatico.':'Calendario, orari (ora italiana) e risultati si aggiornano da soli (ESPN). La classifica non è disponibile da ESPN e resta ferma al 10 ottobre, come marcatori e voti (Sofascore).';
+    if(ns>=3){ L.scorers=sc; L.scorersLive=true; }
+    var auto=['calendario','orari (ora italiana)','risultati']; if(rows.length) auto.push('classifica'); if(L.scorersLive) auto.push('marcatori');
+    var fixed=[]; if(!rows.length) fixed.push('la classifica (ESPN non la fornisce)'); if(!L.scorersLive) fixed.push('i marcatori'); fixed.push('i voti dei giocatori e il voto medio di squadra');
+    L.note=auto.join(', ')+' si aggiornano da soli (ESPN). Restano quelli del 10 ottobre (Sofascore): '+fixed.join(', ')+'.';
+    L.note=L.note.charAt(0).toUpperCase()+L.note.slice(1);
     summary.push(id);
   });
   if(summary.length){

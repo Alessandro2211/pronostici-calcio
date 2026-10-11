@@ -16,7 +16,13 @@ Ogni 5 minuti un workflow di GitHub Actions (`.github/workflows/aggiorna.yml`) e
 
 La pagina rilegge i dati all'apertura e ogni 10 minuti, e i risultati in diretta ogni minuto.
 
-Limiti: l'API di ESPN non è ufficiale e può cambiare senza preavviso. Non fornisce i marcatori e il rendimento in casa/fuori. Voti dei giocatori, marcatori e voto medio di squadra (Sofascore, 10 ottobre 2026) restano quelli incorporati nella pagina. Se ESPN restituisce una classifica vuota, la pagina tiene quella del 10 ottobre e lo scrive nella nota del campionato.
+I marcatori arrivano dal servizio "leaders" di ESPN (primi 20 per campionato); i nomi dei giocatori vengono letti una volta e conservati in `dati.json`.
+
+Limiti: l'API di ESPN non è ufficiale e può cambiare senza preavviso. Non fornisce il rendimento in casa/fuori. Voti dei giocatori e voto medio di squadra (Sofascore, 10 ottobre 2026) restano quelli incorporati nella pagina. Se ESPN restituisce una classifica vuota, la pagina tiene quella del 10 ottobre e lo scrive nella nota del campionato.
+
+## Impostazioni
+
+L'ingranaggio in alto a destra apre le impostazioni: tema (sistema, chiaro, scuro) e visualizzazione dei campionati (griglia o elenco). Le scelte restano salvate nel browser.
 
 ## Risultati in diretta
 
