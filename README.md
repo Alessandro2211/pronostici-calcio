@@ -26,7 +26,7 @@ L'ingranaggio in alto a destra apre le impostazioni: tema (sistema, chiaro, scur
 
 ## Risultati in diretta
 
-Sotto ogni partita iniziata compaiono il risultato (In diretta con il minuto, Intervallo o Finale) e il confronto con il pronostico: segno, doppia e Over/Under, con ✓ centrata, ✗ sbagliata oppure «in linea» o «fuori linea» finché la partita è in corso. Sopra l'elenco c'è il riepilogo della giornata, e la schedina mostra l'esito di ogni pick.
+Accanto al nome di ogni squadra compaiono i gol; sotto, lo stato (Primo tempo, Intervallo, Secondo tempo con il minuto, oppure Finale) e l'Over/Under favorito per ogni linea, con ✓ centrata, ✗ sbagliata oppure «in linea» o «fuori linea» finché la partita è in corso. Il riquadro del pronostico mostra se il segno è in linea con il risultato. Nella scheda Giocate le partite finite restano salvate fino a fine stagione e si filtrano per giornata. Sopra l'elenco c'è il riepilogo della giornata, e la schedina mostra l'esito di ogni pick.
 
 ## Attivazione (una sola volta)
 
