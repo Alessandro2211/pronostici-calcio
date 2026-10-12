@@ -1,7 +1,7 @@
 # Pronostici Calcio Europa
 
 Pagina web (installabile come app) con i pronostici 1X2, le doppie, gli Over/Under e la schedina per Serie A, Premier League, LaLiga, Bundesliga, Ligue 1, Eredivisie e Primeira Liga.
-Tieni premuto 3 secondi il simbolo di un campionato per vedere la schedina.
+La schedina si apre dal pulsante «Schedina» di ogni campionato, oppure tenendo premuto 3 secondi il simbolo del campionato.
 
 Le percentuali sono stime statistiche e non garantiscono nessun esito.
 
@@ -22,7 +22,7 @@ Limiti: l'API di ESPN non è ufficiale e può cambiare senza preavviso. Non forn
 
 ## Impostazioni
 
-L'ingranaggio in alto a destra apre le impostazioni: tema (sistema, chiaro, scuro) e visualizzazione dei campionati (griglia o elenco). Le scelte restano salvate nel browser.
+L'ingranaggio in alto a destra apre le impostazioni: tema (sistema, chiaro, scuro) e visualizzazione dei campionati (quadrati con la bandiera o nomi in etichette arrotondate). Le scelte restano salvate nel browser.
 
 ## Risultati in diretta
 

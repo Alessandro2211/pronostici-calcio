@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#07161A">
+<meta name="theme-color" content="#0A0D18">
 <script>try{var __p=JSON.parse(localStorage.getItem("pronostici.prefs")||"{}");if(__p.theme==="light"||__p.theme==="dark")document.documentElement.setAttribute("data-theme",__p.theme)}catch(e){}</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -13,35 +13,34 @@
 <title>Pronostici Calcio Europa</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
 <style>
-/* Tabellone di giornata. Fondo verde-petrolio da notte di campionato, luce di stadio ambra come unico accento.
-   Segni 1/X/2 in blu, ardesia e magenta; il verde resta riservato a pronostici centrati e Over/Under favoriti.
-   Layout: campionati come bandiere in alto, sotto l'elenco partite a righe (squadre in colonna, segno a destra). */
+/* Stile moderno: superfici bianche o blu notte, angoli molto arrotondati, un solo accento indaco.
+   Segni 1/X/2 in blu, ardesia e magenta; il verde resta riservato a pronostici centrati e Over/Under favoriti. */
 :root{
-  --bg:#E8EFEB; --surface:#FFFFFF; --surface2:#DDE7E2; --ink:#0B1F23; --muted:#52686A; --line:#C8D5CF;
-  --accent:#F5A524; --accent-ink:#1B1100; --accent-text:#8A5000; --lv-sel:#FFB63D;
-  --home:#1F6FE0; --draw:#6B7F8B; --away:#B02E86; --sign-ink:#FFFFFF;
-  --good:#0A7F62; --bad:#C22F4F; --warn:#7A5200; --warnbg:#FBEFD0;
-  --shadow:0 1px 2px rgba(11,31,35,.08),0 8px 20px -10px rgba(11,31,35,.22);
-  --f-display:'Bricolage Grotesque','Trebuchet MS',system-ui,sans-serif;
-  --f-body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --bg:#EEF1F8; --surface:#FFFFFF; --surface2:#F0F2F9; --ink:#10142A; --muted:#667089; --line:#E1E5F0;
+  --accent:#5B50F0; --accent-ink:#FFFFFF; --accent-text:#4A3FD6; --lv-sel:#FFFFFF;
+  --home:#2F6FEA; --draw:#76839A; --away:#C0338F; --sign-ink:#FFFFFF;
+  --good:#0A8A68; --bad:#D03355; --warn:#7A5200; --warnbg:#FBF1D6;
+  --shadow:0 1px 2px rgba(16,20,42,.04),0 14px 34px -14px rgba(16,20,42,.16);
+  --f-display:'Plus Jakarta Sans','Trebuchet MS',system-ui,sans-serif;
+  --f-body:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#07161A; --surface:#0E2227; --surface2:#163038; --ink:#E6F1EE; --muted:#8BA7A8; --line:#21404A;
-    --accent:#FFB63D; --accent-ink:#1B1100; --accent-text:#FFC561; --lv-sel:#7A4600;
-    --home:#6AA6FF; --draw:#8FA5B2; --away:#F08AD0; --sign-ink:#06141A;
+    --bg:#0A0D18; --surface:#141929; --surface2:#1D2336; --ink:#EEF0FA; --muted:#98A0B8; --line:#272E47;
+    --accent:#7A72FF; --accent-ink:#FFFFFF; --accent-text:#ABA6FF; --lv-sel:#FFFFFF;
+    --home:#6AA6FF; --draw:#8FA0B8; --away:#F08AD0; --sign-ink:#0A0D18;
     --good:#3DDBB0; --bad:#FF7F9B; --warn:#F0C766; --warnbg:#2B2410;
-    --shadow:0 0 0 1px #21404A; color-scheme:dark;
+    --shadow:0 0 0 1px #272E47; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#07161A; --surface:#0E2227; --surface2:#163038; --ink:#E6F1EE; --muted:#8BA7A8; --line:#21404A;
-  --accent:#FFB63D; --accent-ink:#1B1100; --accent-text:#FFC561; --lv-sel:#7A4600;
-  --home:#6AA6FF; --draw:#8FA5B2; --away:#F08AD0; --sign-ink:#06141A;
+  --bg:#0A0D18; --surface:#141929; --surface2:#1D2336; --ink:#EEF0FA; --muted:#98A0B8; --line:#272E47;
+  --accent:#7A72FF; --accent-ink:#FFFFFF; --accent-text:#ABA6FF; --lv-sel:#FFFFFF;
+  --home:#6AA6FF; --draw:#8FA0B8; --away:#F08AD0; --sign-ink:#0A0D18;
   --good:#3DDBB0; --bad:#FF7F9B; --warn:#F0C766; --warnbg:#2B2410;
-  --shadow:0 0 0 1px #21404A; color-scheme:dark;
+  --shadow:0 0 0 1px #272E47; color-scheme:dark;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-inline:16px;padding-block:24px 56px}
@@ -215,7 +214,7 @@ table.slip th{text-align:left}
 .tiles.list .tile{padding:10px 14px}
 .tiles.list .tt{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 12px}
 @media (max-width:520px){
-  .match{padding:14px}
+  .match{padding:16px}
   .score b{width:58px;height:58px;font-size:2.1rem}
 }
 @media (prefers-reduced-motion:reduce){
@@ -223,16 +222,64 @@ table.slip th{text-align:left}
   .emblem.hold::after{animation:none;opacity:1}
   .tile{transition:none}
 }
+
+/* ---------- livello moderno: angoli tondi, titolo solo, campionati a quadrati o a etichette ---------- */
+body{background:radial-gradient(900px 420px at 50% -140px,color-mix(in srgb,var(--accent) 16%,transparent),transparent) no-repeat,var(--bg);font-weight:500;letter-spacing:-.005em}
+h1{font-size:clamp(1.6rem,6vw,2.3rem);line-height:1.05;letter-spacing:-.035em}
+.wrap{gap:20px}
+header.top{display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:12px}
+.gear{width:46px;height:46px;border-radius:50%}
+.tiles{display:grid;gap:10px}
+.tiles.grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+.tiles.grid .tile{flex-direction:column;justify-content:center;text-align:center;aspect-ratio:1/1;padding:10px 8px;gap:8px;border-radius:26px}
+.tiles.grid .tile .emblem{width:54px;height:38px;border-radius:12px}
+.tiles.grid .tile .tt{align-items:center;gap:2px}
+.tiles.grid .tile b{font-size:.78rem;line-height:1.15}
+.tiles.pills{display:flex;flex-wrap:wrap;gap:8px}
+.tiles.pills .tile{padding:10px 18px;border-radius:999px;gap:8px}
+.tiles.pills .tile .emblem{display:none}
+.tiles.pills .tile .tt{flex-direction:row;align-items:center;gap:8px}
+.tiles.pills .tile b{font-size:.95rem}
+.tile{border-radius:26px;box-shadow:var(--shadow);transition:transform .15s,background .15s,box-shadow .15s}
+.tile:active{transform:scale(.97)}
+.tile .tt small:not(.lv){display:none}
+.tile small.lv{color:var(--bad);font-size:.66rem;font-weight:700}
+.tile[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 12px 26px -10px color-mix(in srgb,var(--accent) 70%,transparent)}
+.tile[aria-pressed="true"] small.lv{color:var(--lv-sel)}
+.emblem{border-radius:10px}
+.ptitle .emblem{border-radius:14px}
+.panel{gap:18px}
+.rbtn{padding:9px 16px;font-weight:700}
+.tabs{border-radius:999px;padding:5px;gap:4px;background:var(--surface);box-shadow:var(--shadow)}
+.tab{border-radius:999px;padding:9px 16px}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:none}
+.notice{border-radius:20px;padding:12px 16px}
+.match{border-radius:28px;padding:18px;gap:16px}
+.score b{width:66px;height:66px;border-radius:24px}
+.bar{height:8px;border-radius:999px}
+.pr{border-radius:20px;padding:9px 12px}
+.chip{border-radius:999px;padding:5px 12px}
+.cell{border-radius:16px;padding:8px 12px}
+.resrow{border-radius:20px;padding:12px 14px}
+.vd,.stat,.pk,.verd{border-radius:999px}
+.vsum{border-radius:20px;border-left-width:0;padding:12px 16px}
+.gsum div{border-radius:22px}
+.gm{border-radius:24px;padding:14px 16px}
+.gscore{border-radius:16px}
+.tw{border-radius:24px}
+.method{border-radius:24px}
+.hint{display:none}
+.slipbox{border-radius:30px}
+.seg{border-radius:999px;padding:5px;gap:4px}
+.seg button{border-radius:999px;padding:9px 18px}
+.seg button[aria-checked="true"]{background:var(--accent);color:var(--accent-ink)}
+.set p{line-height:1.4}
+footer{padding-inline:6px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="top"><span class="kicker" id="today"></span><button class="gear" id="gear" type="button" aria-label="Impostazioni" aria-haspopup="dialog"></button></div>
-    <h1>Pronostici Calcio Europa</h1>
-    <p class="lead">Per ogni campionato, le partite della giornata con segno 1X2, doppia, probabilità e Over/Under. Il calcolo parte da classifica, andamento, voti, fattore campo e marcatori.</p>
-    <p class="hint">Tieni premuto per 3 secondi il simbolo di un campionato per vedere la schedina.</p>
-  </header>
+  <header class="top"><h1>Pronostici Calcio Europa</h1><button class="gear" id="gear" type="button" aria-label="Impostazioni" aria-haspopup="dialog"></button></header>
   <nav class="tiles" id="tiles" aria-label="Campionati"></nav>
   <section class="panel" id="panel" aria-live="polite"></section>
   <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Calendari, risultati, classifiche e marcatori si aggiornano da soli (ESPN); voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: controllati ogni 10 secondi durante le partite (ogni minuto negli altri momenti), con possibile ritardo della fonte. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
@@ -474,7 +521,7 @@ var FLAGS={
 function flag(id){return '<svg viewBox="0 0 30 20" preserveAspectRatio="none" aria-hidden="true" focusable="false">'+(FLAGS[id]||'')+'</svg>';}
 /* ---------- IMPOSTAZIONI ---------- */
 var prefs={theme:'auto',view:'grid'};
-try{var sp=JSON.parse(localStorage.getItem('pronostici.prefs')||'{}'); if(sp.theme==='light'||sp.theme==='dark') prefs.theme=sp.theme; if(sp.view==='list') prefs.view='list';}catch(_){}
+try{var sp=JSON.parse(localStorage.getItem('pronostici.prefs')||'{}'); if(sp.theme==='light'||sp.theme==='dark') prefs.theme=sp.theme; if(sp.view==='pills'||sp.view==='list') prefs.view='pills';}catch(_){}
 function savePrefs(){try{localStorage.setItem('pronostici.prefs',JSON.stringify(prefs));}catch(_){}}
 function applyTheme(){var r=document.documentElement; if(prefs.theme==='auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme',prefs.theme);}
 function gearSVG(){
@@ -488,7 +535,7 @@ function seg(label,key,opts){
 function settingsHTML(){
   return '<div class="shead"><h3 id="setTitle">Impostazioni</h3><button class="rbtn" id="setClose" type="button" data-close-set="1">Chiudi</button></div>'
    +'<div class="set"><b>Tema</b><p>Con Sistema la pagina segue il tema del telefono o del computer.</p>'+seg('Tema','theme',[['auto','Sistema'],['light','Chiaro'],['dark','Scuro']])+'</div>'
-   +'<div class="set"><b>Icone dei campionati</b><p>Come mostrare i campionati in alto.</p>'+seg('Icone dei campionati','view',[['grid','Griglia'],['list','Elenco']])+'</div>';
+   +'<div class="set"><b>Campionati</b><p>Quadrati con la bandiera uno accanto all’altro, oppure i nomi in etichette arrotondate.</p>'+seg('Campionati','view',[['grid','Quadrati'],['pills','Nomi']])+'</div>';
 }
 function openSettings(){ $('setbox').innerHTML=settingsHTML(); $('settings').hidden=false; var c=$('setClose'); if(c) c.focus(); }
 function closeSettings(){ if($('settings').hidden) return; $('settings').hidden=true; var g=$('gear'); if(g) g.focus(); }
@@ -498,7 +545,7 @@ function setPref(k,v){
 }
 
 function renderTiles(){
-  $('tiles').className='tiles'+(prefs.view==='list'?' list':'');
+  $('tiles').className='tiles '+(prefs.view==='pills'?'pills':'grid');
   $('tiles').innerHTML=LEAGUES.map(function(l){
     var sub=l.matches.length?('Giornata '+l.round+' · '+l.matches.length+' partite'):'Calendario da caricare';
     var nl=l.matches.filter(function(m){return m[4]&&m[4].st!=='FT'}).length;
@@ -805,7 +852,6 @@ document.addEventListener('click',function(e){
 
 try{ var hh=(location.hash||'').slice(1); if(LEAGUES.some(function(l){return l.id===hh})) state.league=hh; }catch(_){}
 applyTheme(); $('gear').innerHTML=gearSVG();
-$('today').textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 render();
 
 /* ---------- AGGIORNAMENTO AUTOMATICO ---------- */
