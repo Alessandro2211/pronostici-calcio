@@ -1,0 +1,32 @@
+{
+  "name": "pronostici-calcio-europa",
+  "version": "1.0.0",
+  "description": "Pronostici Calcio Europa: app per Windows che apre la pagina online sempre aggiornata",
+  "main": "main.js",
+  "author": "Pronostici Calcio Europa",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "it.pronosticicalcio.europa",
+    "productName": "Pronostici Calcio Europa",
+    "artifactName": "Pronostici-Calcio-Setup.exe",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "offline.html", "icon.png", "package.json"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Pronostici Calcio Europa"
+    }
+  }
+}

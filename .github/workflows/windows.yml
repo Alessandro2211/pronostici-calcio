@@ -1,0 +1,39 @@
+name: App Windows
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/windows.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Compila il programma di installazione
+        working-directory: desktop
+        run: |
+          npm install
+          npx electron-builder --win --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pronostici-Calcio-Windows
+          path: desktop/dist/Pronostici-Calcio-Setup.exe
+      - name: Pubblica nelle Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete windows-latest --yes --cleanup-tag || true
+          gh release create windows-latest desktop/dist/Pronostici-Calcio-Setup.exe \
+            --title "App per Windows" \
+            --notes "Programma di installazione per Windows. Apre la pagina online, quindi i dati e le impostazioni sono sempre gli stessi della versione web: non serve reinstallare per avere gli aggiornamenti." \
+            --target "${{ github.sha }}"

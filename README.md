@@ -47,7 +47,14 @@ Con la pagina online, vai su [pwabuilder.com](https://www.pwabuilder.com), incol
 - `site/names.js`: abbina i nomi delle squadre dell'API a quelli della pagina
 - `site/sw.js`, `site/manifest.webmanifest`, `site/icons/`: installazione come app
 - `scripts/update.mjs`: scarica i dati da ESPN
+- `desktop/`: app per Windows (Electron), apre la pagina online
 
 ## Partite giocate
 La scheda **Giocate** di ogni campionato elenca tutte le partite finite della stagione, per giornata, con il risultato reale e i pronostici (segno, doppia, Over/Under 1,5 · 2,5 · 3,5). Verde con ✓ se il pronostico coincide con il risultato, rosso con ✗ se non coincide, più le percentuali di segni e doppie centrati.
 Lo script salva le partite finite in `site/data/storico.json`: la prima volta legge tutta la stagione (una richiesta per giorno), poi solo gli ultimi giorni. Il pronostico di ogni partita è ricalcolato con la classifica ricostruita fino al giorno prima; non usa voti Sofascore né marcatori, che sono dati di oggi.
+
+## App per Windows
+Il flusso di lavoro **App Windows** (Actions) compila `Pronostici-Calcio-Setup.exe` su un computer Windows di GitHub e lo pubblica nelle Releases con indirizzo fisso:
+`https://github.com/Alessandro2211/pronostici-calcio/releases/download/windows-latest/Pronostici-Calcio-Setup.exe`.
+L'app apre la pagina online, quindi dati, tema e impostazioni sono quelli della versione web e non serve reinstallare per gli aggiornamenti. Se manca la connessione mostra un avviso e riprova ogni 15 secondi. Il file non è firmato: Windows può mostrare l'avviso SmartScreen (Ulteriori informazioni, poi Esegui comunque).
+Si ricompila da Actions con «Run workflow», oppure da solo quando cambia qualcosa in `desktop/`.
