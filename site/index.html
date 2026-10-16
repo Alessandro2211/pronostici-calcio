@@ -301,7 +301,7 @@ footer{padding-inline:6px}
   <section class="livenow" id="livenow" hidden aria-live="polite"></section>
   <nav class="tiles" id="tiles" aria-label="Campionati"></nav>
   <section class="panel" id="panel" aria-live="polite"></section>
-  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Calendari, risultati, classifiche e marcatori si aggiornano da soli (ESPN); voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: nel browser e sul telefono arrivano quando GitHub rinnova i dati, a volte con ore di ritardo; l’app per computer li legge direttamente da ESPN ogni 30 secondi. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
+  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Calendari, risultati, classifiche e marcatori si aggiornano da soli (ESPN); voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: nel browser e sul telefono arrivano quando GitHub rinnova i dati, a volte con ore di ritardo; l’app per computer li legge direttamente da ESPN ogni 30 secondi. <span id="upd"></span> <span id="lvsrc"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
 </div>
 
 <div class="overlay" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle"><div class="slipbox plain" id="setbox"></div></div>
@@ -980,8 +980,53 @@ document.addEventListener('click',function(e){
 });
 if(window.desktopApp&&window.desktopApp.onLive){ try{ window.desktopApp.onLive(onDeskLive); }catch(_){} }
 
+/* ---------- BROWSER E TELEFONO: lettura diretta da ESPN durante le partite ---------- */
+// Il file live.json di GitHub si rinnova solo ogni poche ore. Se ESPN permette la lettura dal browser, durante le
+// partite la pagina chiede i risultati direttamente; se la richiesta viene bloccata si torna al file e non si riprova per 30 minuti.
+var WEB={ok:null,at:0,last:0,off:0};
+var ESPN_CODE={'serie-a':'ita.1',premier:'eng.1',liga:'esp.1',bundesliga:'ger.1',ligue1:'fra.1',eredivisie:'ned.1',primeira:'por.1'};
+function webFresh(){return WEB.ok===true&&Date.now()-WEB.at<180000;}
+function espnStatus(ev){
+  var t=(ev.status&&ev.status.type)||{};
+  if(t.name==='STATUS_HALFTIME') return 'PAUSED';
+  if(t.state==='in') return 'IN_PLAY';
+  if(t.state==='post'&&['STATUS_POSTPONED','STATUS_CANCELED','STATUS_CANCELLED','STATUS_SUSPENDED','STATUS_ABANDONED'].indexOf(t.name)<0) return 'FINISHED';
+  return null;
+}
+function espnDay(off){return new Date(Date.now()+off*86400000).toISOString().slice(0,10).replace(/-/g,'');}
+function leagueActive(L){
+  var now=romeParts(new Date().toISOString()), nm=parseInt(now.t.slice(0,2),10)*60+parseInt(now.t.slice(3),10);
+  return L.matches.some(function(m){
+    var sc=m[4]; if(sc&&(sc.st==='LIVE'||sc.st==='HT')) return true;
+    if(sc&&sc.st==='FT') return false;
+    if(m[0]!==now.d||!m[1]) return false;
+    var km=parseInt(m[1].slice(0,2),10)*60+parseInt(m[1].slice(3),10);
+    return nm>=km-10&&nm<=km+180;
+  });
+}
+function pollEspnWeb(){
+  if(window.desktopApp||typeof fetch!=='function'||location.protocol==='file:') return;
+  if(WEB.ok===false&&Date.now()-WEB.off<30*60*1000) return;
+  var ids=LEAGUES.filter(leagueActive).map(function(l){return l.id}); if(!ids.length) return;
+  WEB.last=Date.now();
+  var jobs=[]; ids.forEach(function(id){[-1,0].forEach(function(d){
+    jobs.push(fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/'+ESPN_CODE[id]+'/scoreboard?dates='+espnDay(d),{cache:'no-store'}).then(function(r){if(!r.ok) throw new Error('HTTP '+r.status); return r.json();}).then(function(j){return {id:id,events:j.events||[]};}));
+  });});
+  Promise.all(jobs).then(function(res){
+    var out=[];
+    res.forEach(function(r){r.events.forEach(function(ev){
+      var st=espnStatus(ev), c=ev.competitions&&ev.competitions[0]; if(!st||!c) return;
+      var h=c.competitors.filter(function(x){return x.homeAway==='home'})[0], a=c.competitors.filter(function(x){return x.homeAway==='away'})[0]; if(!h||!a) return;
+      var tm=function(t){return {name:t.displayName||t.name,shortName:t.shortDisplayName||t.name};};
+      var n=function(v){return v==null||v===''||isNaN(+v)?null:+v;};
+      out.push({comp:r.id,status:st,utc:ev.date,home:tm(h.team),away:tm(a.team),score:{h:n(h.score),a:n(a.score)},minute:st==='IN_PLAY'&&ev.status.displayClock?ev.status.displayClock:undefined});
+    });});
+    WEB.ok=true; WEB.at=Date.now(); applyScores({matches:out}); var ls=$('lvsrc'); if(ls) ls.textContent='Risultati in diretta: letti da ESPN alle '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'.';
+  }).catch(function(){ if(WEB.ok!==true||Date.now()-WEB.at>180000){WEB.ok=false;WEB.off=Date.now(); var ls=$('lvsrc'); if(ls) ls.textContent='Risultati in diretta: ESPN non risponde da questo browser, uso i dati di GitHub (possono essere vecchi di ore).';} });
+}
+
 function loadScores(){
-  if(deskFresh()) return;
+  if(deskFresh()||webFresh()) return;
   if(typeof fetch!=='function'||location.protocol==='file:') return;
   fetch('data/live.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j) applyScores(j);}).catch(function(){});
 }
@@ -1008,7 +1053,10 @@ function matchesActive(){
     return nm>=km-10&&nm<=km+180;
   });});
 }
-function tickScores(){ if(!document.hidden) loadScores(); setTimeout(tickScores,matchesActive()?10000:60000); }
+function tickScores(){
+  if(!document.hidden){ if(matchesActive()&&Date.now()-WEB.last>=30000) pollEspnWeb(); loadScores(); }
+  setTimeout(tickScores,matchesActive()?10000:60000);
+}
 setTimeout(tickScores,5000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden){loadLive();setTimeout(loadScores,1500);}});
 </script>

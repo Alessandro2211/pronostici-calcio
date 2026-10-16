@@ -58,3 +58,6 @@ Il flusso di lavoro **App Windows** (Actions) compila `Pronostici-Calcio-Setup.e
 `https://github.com/Alessandro2211/pronostici-calcio/releases/download/windows-latest/Pronostici-Calcio-Setup.exe`.
 L'app apre la pagina online, quindi dati, tema e impostazioni sono quelli della versione web e non serve reinstallare per gli aggiornamenti. In più legge i risultati direttamente da ESPN ogni 30 secondi (ogni minuto se non ci sono partite in corso) e mostra in alto il riquadro «In diretta ora» con tutte le partite in corso di tutti i campionati. Il file `live.json` pubblicato da GitHub resta più lento: le esecuzioni programmate di GitHub Actions partono solo ogni 3-5 ore, quindi nel browser e sul telefono i risultati in diretta possono essere vecchi. Se manca la connessione mostra un avviso e riprova ogni 15 secondi. Il file non è firmato: Windows può mostrare l'avviso SmartScreen (Ulteriori informazioni, poi Esegui comunque).
 Si ricompila da Actions con «Run workflow», oppure da solo quando cambia qualcosa in `desktop/`.
+
+## Risultati in diretta nel browser
+Durante le partite la pagina prova a leggere ESPN direttamente (ogni 30 secondi, solo per i campionati con partite in corso o in arrivo). Se ESPN non lo permette dal browser, la pagina usa `live.json` di GitHub e riprova dopo 30 minuti. La riga in fondo alla pagina dice quale fonte è in uso.
