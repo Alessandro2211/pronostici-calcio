@@ -1,0 +1,28 @@
+name: Laboratorio modello
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Prova il modello sui dati veri
+        run: node scripts/lab.mjs
+      - name: Salva il risultato in un ramo a parte
+        run: |
+          mkdir -p /tmp/out && cp lab-result.md /tmp/out/
+          git config user.name "lab"; git config user.email "lab@users.noreply.github.com"
+          git checkout --orphan probe-results
+          git rm -rf . -q
+          cp /tmp/out/lab-result.md .
+          git add lab-result.md
+          git commit -q -m "Risultato laboratorio"
+          git push -f origin probe-results
