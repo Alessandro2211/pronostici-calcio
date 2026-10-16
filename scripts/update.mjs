@@ -78,30 +78,39 @@ function toMatch(ev) {
   };
 }
 
-// Raggruppa le partite in giornate: una giornata finisce quando una squadra tornerebbe a giocare.
+// Raggruppa le partite in giornate. Una nuova giornata comincia quando una squadra tornerebbe a giocare
+// oppure quando passano più di 3 giorni dalla partita precedente (altrimenti gli ultimi recuperi di una
+// giornata si fondono con le prime partite della successiva).
+const ROUND_GAP = 3 * DAY;
 function groupRounds(matches) {
   const sorted = matches.filter((m) => m.status !== 'POSTPONED').sort((a, b) => Date.parse(a.utc) - Date.parse(b.utc));
   const groups = [];
-  let cur = null, teams = null;
+  let cur = null, teams = null, last = 0;
   for (const m of sorted) {
-    const k1 = m.home.name, k2 = m.away.name;
-    if (!cur || teams.has(k1) || teams.has(k2)) { cur = []; teams = new Set(); groups.push(cur); }
-    cur.push(m); teams.add(k1); teams.add(k2);
+    const k1 = m.home.name, k2 = m.away.name, t = Date.parse(m.utc);
+    if (!cur || teams.has(k1) || teams.has(k2) || t - last > ROUND_GAP) { cur = []; teams = new Set(); groups.push(cur); }
+    cur.push(m); teams.add(k1); teams.add(k2); last = t;
   }
   return groups;
 }
 
-function pickRound(groups) {
+// Sceglie la giornata da mostrare: la prima con partite ancora da giocare. Un recupero isolato non conta come giornata
+// (servono almeno metà delle partite attese); se non c'è nessuna giornata in programma resta l'ultima conclusa.
+function pickRound(groups, expected = 8) {
   const near = (list) => {
     const ts = list.map((m) => Date.parse(m.utc)).sort((a, b) => a - b);
     const med = ts[Math.floor(ts.length / 2)];
     return list.filter((m) => Math.abs(Date.parse(m.utc) - med) <= 7 * DAY);
   };
-  for (let i = 0; i < groups.length; i++) {
-    const g = near(groups[i]);
-    if (g.some((m) => PENDING.includes(m.status))) return { idx: i, list: g };
-  }
-  return groups.length ? { idx: groups.length - 1, list: near(groups[groups.length - 1]) } : null;
+  const minSize = Math.max(2, Math.ceil(expected / 2));
+  const lists = groups.map(near);
+  const big = lists.map((g, i) => i).filter((i) => lists[i].length >= minSize);
+  const pend = (i) => lists[i].some((m) => PENDING.includes(m.status));
+  let idx = big.find(pend);
+  if (idx === undefined && big.length) idx = big[big.length - 1];
+  if (idx === undefined) idx = lists.findIndex((g, i) => pend(i));
+  if (idx === undefined || idx < 0) idx = groups.length - 1;
+  return groups.length ? { idx, list: lists[idx] } : null;
 }
 
 function standingsEntries(json) {
@@ -198,7 +207,7 @@ async function backfillHist(id, code, now) {
 function buildLeague(L, code, all, standings, now) {
   const names = L.teams.map((t) => t[0]);
   const groups = groupRounds(all);
-  const pick = pickRound(groups);
+  const pick = pickRound(groups, Math.floor(names.length / 2));
   let matchday = null;
   if (pick && standings.total.length) {
     const gp = new Map(standings.total.map((r) => [NameMatch.matchTeam(r.team, names), r.played]));
@@ -284,7 +293,7 @@ if (!result) {
   for (const L of leagues) {
     const code = CODES[L.id];
     try {
-      const all = await fetchDays(code, Array.from({ length: 13 }, (_, i) => i - 4), now);
+      const all = await fetchDays(code, Array.from({ length: 23 }, (_, i) => i - 4), now);
       let standings = { total: [], home: [], away: [] };
       let idToTeam = new Map();
       try {
