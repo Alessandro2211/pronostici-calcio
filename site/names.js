@@ -48,7 +48,7 @@
     'Benfica': ['benfica', 'sl benfica'], 'Braga': ['sporting braga', 'sc braga', 'braga'],
     'Vitória SC': ['vitoria guimaraes', 'vitoria sc', 'vitoria de guimaraes'], 'Santa Clara': ['santa clara'],
     'Arouca': ['arouca'], 'Gil Vicente': ['gil vicente'], 'Académico Viseu': ['academico de viseu', 'academico viseu'],
-    'Estrela Amadora': ['estrela da amadora', 'estrela amadora'], 'Alverca': ['alverca'], 'Marítimo': ['maritimo'],
+    'Estrela Amadora': ['estrela da amadora', 'estrela amadora', 'estrela'], 'Alverca': ['alverca'], 'Marítimo': ['maritimo'],
     'Moreirense': ['moreirense'], 'Famalicão': ['famalicao'], 'Nacional': ['nacional', 'nacional da madeira'],
     'Rio Ave': ['rio ave'], 'Casa Pia': ['casa pia'], 'Estoril': ['estoril praia', 'estoril']
   };

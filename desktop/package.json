@@ -15,7 +15,7 @@
     "productName": "Pronostici Calcio Europa",
     "artifactName": "Pronostici-Calcio-Setup.exe",
     "directories": { "output": "dist" },
-    "files": ["main.js", "offline.html", "icon.png", "package.json"],
+    "files": ["main.js", "preload.js", "live.js", "offline.html", "icon.png", "package.json"],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
       "icon": "build/icon.png"

@@ -275,14 +275,33 @@ header.top{display:flex;flex-direction:row;justify-content:space-between;align-i
 .seg button[aria-checked="true"]{background:var(--accent);color:var(--accent-ink)}
 .set p{line-height:1.4}
 footer{padding-inline:6px}
+
+/* In diretta ora: solo nell'app per computer */
+.livenow{background:var(--surface);box-shadow:var(--shadow);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.lnhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.lnhead h2{font-family:var(--f-display);font-size:1.15rem;margin:0}
+.lnhead h2::before{content:'● ';color:var(--bad);animation:blink 1.4s steps(2,start) infinite}
+.lnhead span,.lnempty{color:var(--muted);font-size:.85rem;margin:0}
+.lngrp{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px}
+.lnrow{display:grid;grid-template-columns:26px minmax(0,1fr) auto minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;text-align:left;border:0;background:var(--surface2);color:var(--ink);border-radius:12px;padding:8px 10px;font-size:.9rem}
+.lnrow:hover{filter:brightness(.97)}
+.lnflag{display:block;width:26px;height:17px;border-radius:4px;overflow:hidden}
+.lnflag svg{display:block;width:100%;height:100%}
+.lnt{font-weight:700;overflow-wrap:anywhere}
+.lnt.h{text-align:right}
+.lns{font-family:var(--f-display);font-weight:800;font-size:1.25rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lnm{display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:.78rem;color:var(--bad);font-weight:700;white-space:nowrap}
+@media (max-width:560px){.lnrow{grid-template-columns:26px minmax(0,1fr) auto minmax(0,1fr)}.lnm{grid-column:2/-1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 8px}}
+@media (prefers-reduced-motion:reduce){.lnhead h2::before{animation:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top"><h1>Pronostici Calcio Europa</h1><button class="gear" id="gear" type="button" aria-label="Impostazioni" aria-haspopup="dialog"></button></header>
+  <section class="livenow" id="livenow" hidden aria-live="polite"></section>
   <nav class="tiles" id="tiles" aria-label="Campionati"></nav>
   <section class="panel" id="panel" aria-live="polite"></section>
-  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Calendari, risultati, classifiche e marcatori si aggiornano da soli (ESPN); voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: controllati ogni 10 secondi durante le partite (ogni minuto negli altri momenti), con possibile ritardo della fonte. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
+  <footer>Le percentuali sono stime statistiche, non certezze e non consigli di scommessa. Calendari, risultati, classifiche e marcatori si aggiornano da soli (ESPN); voti dei giocatori da Sofascore, 10 ottobre 2026. Risultati in diretta: nel browser e sul telefono arrivano quando GitHub rinnova i dati, a volte con ore di ritardo; l’app per computer li legge direttamente da ESPN ogni 30 secondi. <span id="upd"></span> Dove un dato manca, il modello usa solo la forza storica della squadra.</footer>
 </div>
 
 <div class="overlay" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle"><div class="slipbox plain" id="setbox"></div></div>
@@ -500,6 +519,7 @@ function scorerProb(S,lambdaTeam,player){
 
 /* ---------- UI ---------- */
 var state={league:'serie-a',tab:'partite',gr:'all'};
+var DESK={at:0,raw:null,matches:[]}; // risultati letti da ESPN dall'app per computer
 function $(id){return document.getElementById(id)}
 function pct(x){return Math.round(x*100)}
 function hue(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h}
@@ -817,7 +837,7 @@ function renderPanel(){
     +'<div>'+body+'</div>';
 }
 
-function render(){ renderTiles(); renderPanel(); }
+function render(){ renderTiles(); renderPanel(); renderLiveNow(); }
 
 var hold={t:null,el:null,x:0,y:0,suppress:false};
 function cancelHold(){if(hold.t){clearTimeout(hold.t);hold.t=null;} if(hold.el){hold.el.classList.remove('hold');hold.el=null;}}
@@ -920,10 +940,48 @@ function applyLive(data){
   if(summary.length){
     var el=$('upd'); if(el&&when) el.textContent='Ultimo aggiornamento dati: '+when.toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'.';
     render();
+    if(deskFresh()&&DESK.raw) applyScores(DESK.raw);
     setTimeout(loadScores,300);
   }
 }
+/* ---------- APP PER COMPUTER: partite in diretta lette da ESPN dal programma ---------- */
+function deskFresh(){return !!window.desktopApp&&Date.now()-DESK.at<180000;}
+function onDeskLive(d){
+  if(!d||!d.matches) return;
+  DESK.at=Date.now(); DESK.raw=d; DESK.matches=d.matches;
+  applyScores(d); renderLiveNow();
+}
+function renderLiveNow(){
+  var el=$('livenow'); if(!el) return;
+  if(!window.desktopApp){el.hidden=true;return;}
+  el.hidden=false;
+  var live=DESK.matches.filter(function(m){return m.status==='IN_PLAY'||m.status==='PAUSED';});
+  var out='<div class="lnhead"><h2>In diretta ora</h2><span>'+(live.length?live.length+(live.length===1?' partita':' partite'):'')+'</span></div>';
+  if(!DESK.at) out+='<p class="lnempty">Collegamento a ESPN in corso…</p>';
+  else if(!live.length) out+='<p class="lnempty">Nessuna partita in corso in questo momento. Controllo ESPN ogni minuto.</p>';
+  else LEAGUES.forEach(function(L){
+    var rows=live.filter(function(m){return m.comp===L.id}); if(!rows.length) return;
+    var names=L.teams.map(function(t){return t[0]});
+    out+='<div class="lngrp">'+L.name+'</div>'+rows.map(function(lm){
+      var hn=NameMatch.matchTeam(lm.home,names), an=NameMatch.matchTeam(lm.away,names), so=scoreObj(lm.status,lm.score,lm.minute);
+      var chip=''; if(hn&&an&&so){ var p=predict(L,hn,an); chip=vd('Segno '+p.sign,evalSign(p,so)); }
+      return '<button type="button" class="lnrow" data-lgo="'+L.id+'"><span class="lnflag">'+flag(L.id)+'</span>'
+        +'<span class="lnt h">'+(hn||lm.home.name)+'</span><span class="lns">'+so.h+'–'+so.a+'</span><span class="lnt a">'+(an||lm.away.name)+'</span>'
+        +'<span class="lnm"><span>'+phaseLabel(so)+'</span>'+chip+'</span></button>';
+    }).join('');
+  });
+  el.innerHTML=out;
+}
+document.addEventListener('click',function(e){
+  var r=e.target.closest('[data-lgo]'); if(!r) return;
+  state.league=r.getAttribute('data-lgo'); state.tab='partite'; render();
+  try{history.replaceState(null,'','#'+state.league)}catch(_){}
+  var pn=$('panel'); if(pn&&pn.scrollIntoView) pn.scrollIntoView({behavior:'smooth',block:'start'});
+});
+if(window.desktopApp&&window.desktopApp.onLive){ try{ window.desktopApp.onLive(onDeskLive); }catch(_){} }
+
 function loadScores(){
+  if(deskFresh()) return;
   if(typeof fetch!=='function'||location.protocol==='file:') return;
   fetch('data/live.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j) applyScores(j);}).catch(function(){});
 }
