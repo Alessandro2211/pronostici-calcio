@@ -72,7 +72,7 @@ function toMatch(ev) {
   const st = status(ev);
   const n = (v) => (v == null || v === '' || isNaN(+v) ? null : +v);
   return {
-    utc: ev.date, status: st, home: tm(h.team), away: tm(a.team),
+    id: ev.id, utc: ev.date, status: st, home: tm(h.team), away: tm(a.team),
     score: st === 'TIMED' || st === 'POSTPONED' ? null : { h: n(h.score), a: n(a.score) },
     minute: st === 'IN_PLAY' && ev.status.displayClock ? ev.status.displayClock : undefined,
   };
@@ -181,8 +181,52 @@ const hist = { covered: {}, leagues: {} }; // leagues[id] = Map(key -> {utc, hom
 const addHist = (id, m) => {
   if (m.status !== 'FINISHED' || !m.score || m.score.h == null || m.score.a == null) return;
   if (!hist.leagues[id]) hist.leagues[id] = new Map();
-  hist.leagues[id].set(key(m), { utc: m.utc, home: m.home, away: m.away, h: m.score.h, a: m.score.a });
+  const old = hist.leagues[id].get(key(m));
+  hist.leagues[id].set(key(m), { id: m.id || (old && old.id), utc: m.utc, home: m.home, away: m.away, h: m.score.h, a: m.score.a, ...(old && old.st ? { st: old.st } : {}), ...(old && old.sa ? { sa: old.sa } : {}) });
 };
+
+// Statistiche di ogni partita finita (tiri, tiri in porta, corner, falli, ammonizioni, possesso), dal riepilogo di ESPN.
+// Servono al modello subito dopo la fine delle partite: dalle prove su stagioni passate migliorano i pronostici.
+const numv = (v) => { const x = parseFloat(String(v).replace(',', '.')); return Number.isNaN(x) ? null : x; };
+function parseStats(js, e) {
+  const teams = (js.boxscore && js.boxscore.teams) || [];
+  const comps = (((js.header || {}).competitions || [])[0] || {}).competitors || [];
+  const side = new Map(comps.map((c) => [String(c.team && c.team.id), c.homeAway]));
+  const out = {};
+  for (const t of teams) {
+    const nm = (t.team && (t.team.displayName || t.team.name)) || '';
+    const s = t.homeAway || side.get(String(t.team && t.team.id)) || (nm === e.home.name ? 'home' : nm === e.away.name ? 'away' : null);
+    if (!s) continue;
+    const v = Object.fromEntries((t.statistics || []).map((x) => [x.name, numv(x.displayValue != null ? x.displayValue : x.value)]));
+    out[s] = v;
+  }
+  if (!out.home || !out.away || out.home.totalShots == null || out.away.totalShots == null || out.home.shotsOnTarget == null || out.away.shotsOnTarget == null) return null;
+  const g = (side2, k) => (out[side2][k] == null ? 0 : out[side2][k]);
+  return {
+    hs: g('home', 'totalShots'), as: g('away', 'totalShots'), hst: g('home', 'shotsOnTarget'), ast: g('away', 'shotsOnTarget'),
+    hc: g('home', 'wonCorners'), ac: g('away', 'wonCorners'), hf: g('home', 'foulsCommitted'), af: g('away', 'foulsCommitted'),
+    hy: g('home', 'yellowCards'), ay: g('away', 'yellowCards'), hr: g('home', 'redCards'), ar: g('away', 'redCards'),
+    hp: out.home.possessionPct == null ? null : out.home.possessionPct,
+  };
+}
+async function fillStats(id, code, cap) {
+  const all = [...(hist.leagues[id] || new Map()).values()];
+  const todo = all.filter((e) => e.id && !e.st && (e.sa || 0) < 3).sort((a, b) => Date.parse(b.utc) - Date.parse(a.utc)).slice(0, cap);
+  if (!todo.length) return;
+  let ok = 0, fail = 0, empty = 0;
+  const worker = async () => {
+    while (todo.length) {
+      const e = todo.shift();
+      try {
+        const js = await espn(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/summary?event=${e.id}`);
+        const st = parseStats(js, e);
+        if (st) { e.st = st; ok++; } else { e.sa = (e.sa || 0) + 1; empty++; }
+      } catch { fail++; }
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  console.log('statistiche ' + id + ': ' + ok + ' partite lette' + (empty ? ', ' + empty + ' senza statistiche' : '') + (fail ? ', ' + fail + ' richieste fallite (riprovo)' : ''));
+}
 async function backfillHist(id, code, now) {
   const to = ymd(now - DAY).replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3');
   const startT = hist.covered[id] ? Date.parse(hist.covered[id]) - 3 * DAY : Date.parse(seasonYear() + '-08-01');
@@ -281,6 +325,7 @@ if (prev) {
       d.matches = d.matches.map((m) => { const u = byKey.get(key(m)); return u ? { ...m, status: u.status, score: u.score, minute: u.minute } : m; });
       recent.forEach((m) => { pushLive(L.id, m); addHist(L.id, m); });
       if (!hist.covered[L.id]) await backfillHist(L.id, CODES[L.id], now);
+      await fillStats(L.id, CODES[L.id], 40);
       if (d.matches.length && !d.matches.some((m) => PENDING.includes(m.status))) roundOver = true;
     } catch (e) { console.log('::warning::' + L.id + ' risultati non aggiornati: ' + e.message); }
   }
@@ -308,6 +353,7 @@ if (!result) {
       }
       all.forEach((m) => { pushLive(L.id, m); addHist(L.id, m); });
       await backfillHist(L.id, code, now);
+      await fillStats(L.id, code, 200);
       const r =result.leagues[L.id];
       console.log(L.id + ': giornata ' + r.matchday + ', ' + r.matches.length + ' partite, classifica ' + standings.total.length + ' squadre, ' + r.scorers.length + ' marcatori (' + all.length + ' partite lette)');
     } catch (e) {

@@ -61,3 +61,7 @@ Si ricompila da Actions con «Run workflow», oppure da solo quando cambia qualc
 
 ## Risultati in diretta nel browser
 Durante le partite la pagina prova a leggere ESPN direttamente (ogni 30 secondi, solo per i campionati con partite in corso o in arrivo). Se ESPN non lo permette dal browser, la pagina usa `live.json` di GitHub e riprova dopo 30 minuti. La riga in fondo alla pagina dice quale fonte è in uso.
+
+## Statistiche di partita nel modello
+
+Appena una partita finisce, lo script legge da ESPN (`summary?event=ID`) tiri, tiri in porta, ammonizioni ed espulsioni e li salva in `storico.json` (campo `st`). La pagina li somma per squadra e li usa nella forza (tiri in porta, altri tiri, ammonizioni). Pesi e vantaggio casa per campionato sono stati scelti con una prova a ritroso su 4 stagioni (log-loss 1,0052 → 0,9925; le statistiche da sole aggiungono circa −0,004). Senza statistiche la pagina usa i pesi precedenti (classifica + differenza reti + voti Sofascore).

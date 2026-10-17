@@ -313,7 +313,7 @@ footer{padding-inline:6px}
  null = dato non disponibile */
 function T(n,pr,pt,g,gd,asr,gf,split){return [n,pr,pt,g,gd,null,gf==null?null:gf,split||null,asr==null?null:asr];}
 var LEAGUES = [
-{ id:'serie-a', name:'Serie A', country:'Italia', code:'IT', h:152, T:2.55, hfa:55, round:6, dates:'10–12 ott', played:5,
+{ id:'serie-a', name:'Serie A', country:'Italia', code:'IT', h:152, T:2.55, hfa:58, round:6, dates:'10–12 ott', played:5,
   note:'Classifica, voto medio squadra, calendario e rating dei giocatori da Sofascore. Rendimento in casa e fuori solo per Roma, Inter e Lazio.',
   teams:[
    T('Inter',1900,13,5,7,7.99,15,{h:[9,3],a:[4,2]}),T('Napoli',1830,7,5,1,7.30,7),T('Milan',1800,11,5,6,7.59,10),
@@ -337,7 +337,7 @@ var LEAGUES = [
     ['Raimondo','Frosinone',7.50,3],['Wesley','Roma',7.50,3],['Ferguson','Bologna',7.47,3],['Bremer','Juventus',7.40,3],['Masini','Frosinone',7.40,3]],
    foot:''} },
 
-{ id:'premier', name:'Premier League', country:'Inghilterra', code:'EN', h:268, T:2.85, hfa:50, round:6, dates:'10–12 ott', played:5,
+{ id:'premier', name:'Premier League', country:'Inghilterra', code:'EN', h:268, T:2.95, hfa:70, round:6, dates:'10–12 ott', played:5,
   note:'Classifica, voto medio squadra, orari (ora italiana) e rating dei giocatori da Sofascore.',
   teams:[
    T('Man City',1940,15,5,8,7.90),T('Arsenal',1950,12,5,4,7.62),T('Brighton',1760,10,5,11,7.84),T('Brentford',1730,9,5,6,7.64),T('Leeds',1690,9,5,4,7.46),
@@ -358,7 +358,7 @@ var LEAGUES = [
     ['Rice','Arsenal',7.55,4],['E. Anderson','Man City',7.55,4],['Verbruggen','Brighton',7.55,4],['Schade','Brentford',7.54,5],['Tzolakis','Hull',7.53,4]],
    foot:''} },
 
-{ id:'liga', name:'LaLiga', country:'Spagna', code:'ES', h:28, T:2.6, hfa:60, round:8, dates:'10–12 ott', played:7,
+{ id:'liga', name:'LaLiga', country:'Spagna', code:'ES', h:28, T:2.7, hfa:110, round:8, dates:'10–12 ott', played:7,
   note:'Classifica e orari da Sofascore (in alcuni casi un’ora di differenza rispetto ad altri siti). Málaga-Espanyol si è giocata venerdì (1-1). Il voto medio di squadra non è disponibile.',
   teams:[
    T('Barcelona',1920,21,7,24),T('Atlético',1850,16,7,9),T('Betis',1760,16,7,2),T('Real Madrid',1930,15,7,10),T('Sevilla',1700,13,7,1),
@@ -378,7 +378,7 @@ var LEAGUES = [
     ['Remiro','Real Sociedad',7.45,6],['Sivera','Alavés',7.44,7],['Herrero','Málaga',7.43,7],['Terrats','Getafe',7.37,6],['Baena','Atlético',7.36,7]],
    foot:'Sofascore in questo elenco ha troncato i dati dopo il 42º giocatore.'} },
 
-{ id:'bundesliga', name:'Bundesliga', country:'Germania', code:'DE', h:8, T:3.1, hfa:50, round:5, dates:'9–11 ott', played:4,
+{ id:'bundesliga', name:'Bundesliga', country:'Germania', code:'DE', h:8, T:3.2, hfa:83, round:5, dates:'9–11 ott', played:4,
   note:'Classifica, voto medio squadra e orari da Sofascore. Dortmund-Werder si è giocata venerdì (2-2).',
   teams:[
    T('Dortmund',1820,13,5,7,7.73),T('Bayern',1920,10,4,12,8.22),T('Freiburg',1700,10,4,9,7.73),T('Werder',1640,8,5,0,7.42),T('Augsburg',1630,7,4,5,7.58),
@@ -397,7 +397,7 @@ var LEAGUES = [
     ['Ginter','Freiburg',7.63,4],['Bredlow','Stuttgart',7.63,4],['Kurucay','Schalke',7.60,4],['Gruda','Leipzig',7.57,3],['Davies','Bayern',7.55,4]],
    foot:''} },
 
-{ id:'ligue1', name:'Ligue 1', country:'Francia', code:'FR', h:214, T:2.9, hfa:55, round:6, dates:'10–11 ott', played:5,
+{ id:'ligue1', name:'Ligue 1', country:'Francia', code:'FR', h:214, T:2.85, hfa:82, round:6, dates:'10–11 ott', played:5,
   note:'Classifica e voto medio squadra da Sofascore, orari dal programma ufficiale. Lens-Lione si è giocata venerdì (2-1).',
   teams:[
    T('Monaco',1780,13,5,5,7.87),T('Lione',1760,11,6,7,7.79),T('Paris FC',1620,11,5,5,7.57),T('Lille',1750,10,5,4,7.60),T('Rennes',1710,10,5,-1,7.53),
@@ -416,7 +416,7 @@ var LEAGUES = [
     ['Van den Boomen','Angers',7.57,3],['Mpasi','Le Havre',7.57,3],['Samba','Rennes',7.55,2],['Doumbia','Brest',7.53,3],['Nazinho','Monaco',7.53,3]],
    foot:'Sofascore ha troncato l’elenco dopo il 43º giocatore.'} },
 
-{ id:'eredivisie', name:'Eredivisie', country:'Paesi Bassi', code:'NL', h:24, T:3.1, hfa:65, round:8, dates:'10–11 ott', played:7,
+{ id:'eredivisie', name:'Eredivisie', country:'Paesi Bassi', code:'NL', h:24, T:3.15, hfa:89, round:8, dates:'10–11 ott', played:7,
   note:'Classifica, voto medio squadra, orari e rating da Sofascore. PSV-Heerenveen si è giocata venerdì (2-0); la classifica che leggo potrebbe non includerla.',
   teams:[T('AZ',1750,19,7,12,7.78),T('Feyenoord',1790,17,7,18,7.88),T('PSV',1800,16,7,14,7.75),T('Twente',1700,16,7,8,7.74),T('Ajax',1740,14,7,12,7.80),
    T('Fortuna Sittard',1560,13,7,-1,7.01),T('Excelsior',1500,11,7,6,7.40),T('Groningen',1520,11,7,2,7.42),T('Go Ahead Eagles',1600,10,7,2,7.27),
@@ -433,7 +433,7 @@ var LEAGUES = [
     ['van der Werff','Groningen',7.77,3],['Koopmeiners','AZ',7.73,3],['Hadj Moussa','Feyenoord',7.73,3],['van Bergen','Groningen',7.70,3],['Chery','NEC',7.70,2]],
    foot:''} },
 
-{ id:'primeira', name:'Primeira Liga', country:'Portogallo', code:'PT', h:132, T:2.7, hfa:60, round:8, dates:'10–12 ott', played:7,
+{ id:'primeira', name:'Primeira Liga', country:'Portogallo', code:'PT', h:132, T:2.7, hfa:81, round:8, dates:'10–12 ott', played:7,
   note:'Classifica, voto medio squadra, orari (ora italiana) e rating da Sofascore. Moreirense-Gil Vicente e Braga-Sporting erano di venerdì.',
   teams:[T('Porto',1790,21,7,15,7.78),T('Sporting',1820,18,8,11,7.57),T('Benfica',1780,16,7,15,7.78),T('Santa Clara',1560,15,7,7,7.44),T('Arouca',1540,11,7,3,7.19),
    T('Gil Vicente',1580,11,7,1,7.24),T('Académico Viseu',1470,11,7,0,7.30),T('Braga',1700,11,7,0,7.23),T('Estrela Amadora',1530,10,7,0,7.15),
@@ -459,14 +459,38 @@ function asrMean(L){
     L._m=a.length?a.reduce(function(x,y){return x+y},0)/a.length:null;}
   return L._m;
 }
+// Pesi del modello. Verificati sulle stagioni 2022/23-2026/27 (prova a ritroso: ottimizzati su 2022-2025, misurati su 2025/26 e 2026/27).
+// cg: differenza reti, cp: punti a partita, kk: prudenza sui pochi dati (peso del campionato corrente = g/(g+kk)),
+// cs: tiri in porta, cn: altri tiri, cc: ammonizioni (giallo = 1, rosso = 2). Le sigle con A valgono quando mancano i tiri.
+var MP={cg:93,cp:170,kk:6,cs:21,cn:12,cc:24,cgA:165,cpA:212,kkA:9};
+function statRow(L,name){var s=L.tstat&&L.tstat[name]; return s&&s.n>=3?s:null;}
+// Somma, per squadra, differenza tiri in porta, differenza altri tiri e ammonizioni delle partite finite con statistiche (ESPN).
+function rebuildStats(L){
+  var names=L.teams.map(function(t){return t[0]}), agg={}, seen={};
+  function put(hn,an,st){
+    if(!hn||!an||!st||seen[hn+'|'+an]) return; seen[hn+'|'+an]=1;
+    var H=agg[hn]=agg[hn]||{n:0,sot:0,sh:0,cd:0}, A=agg[an]=agg[an]||{n:0,sot:0,sh:0,cd:0};
+    H.n++; H.sot+=st.hst-st.ast; H.sh+=(st.hs-st.hst)-(st.as-st.ast); H.cd+=st.hy+2*st.hr;
+    A.n++; A.sot+=st.ast-st.hst; A.sh+=(st.as-st.ast)-(st.hs-st.hst); A.cd+=st.ay+2*st.ar;
+  }
+  if(HIST&&HIST.leagues&&HIST.leagues[L.id]) HIST.leagues[L.id].forEach(function(e){ if(e.st) put(NameMatch.matchTeam(e.home,names),NameMatch.matchTeam(e.away,names),e.st); });
+  (L._xst||[]).forEach(function(x){ put(x.h,x.a,x.st); });
+  L.tstat=agg; L._bt=null;
+}
 function teamState(L,name,isHome){
   var t=teamRow(L,name);
-  var prior=t.prior, g=t.g||0, ppg=null, perf=null, w=0;
+  var prior=t.prior, g=t.g||0, ppg=null, perf=null, w=0, ss=statRow(L,name);
   if(g>0 && (t.pts!=null || t.pos!=null)){
     ppg = t.pts!=null ? t.pts/g : 1.37+(10.5-t.pos)*0.09;
-    perf = 1700+(ppg-1.37)*170+(t.gd!=null? t.gd/g*55 : 0);
-    w = g/(g+9);
-    if(t.asr!=null && asrMean(L)!=null) perf += (t.asr-asrMean(L))*100;
+    if(ss){
+      // con le statistiche di partita (tiri, tiri in porta, ammonizioni): pesi tarati su 4 stagioni passate
+      perf = 1700+(ppg-1.37)*MP.cp+(t.gd!=null? t.gd/g*MP.cg : 0)+ss.sot/ss.n*MP.cs+ss.sh/ss.n*MP.cn-ss.cd/ss.n*MP.cc;
+      w = g/(g+MP.kk);
+    } else {
+      perf = 1700+(ppg-1.37)*MP.cpA+(t.gd!=null? t.gd/g*MP.cgA : 0);
+      w = g/(g+MP.kkA);
+      if(t.asr!=null && asrMean(L)!=null) perf += (t.asr-asrMean(L))*100;
+    }
   }
   var R = perf==null ? prior : prior*(1-w)+perf*w;
   var venue=0, venuePPG=null;
@@ -480,7 +504,7 @@ function teamState(L,name,isHome){
   var rt=(L.ratings&&!L.ratings.stale)?L.ratings.items.filter(function(r){return r[1]===name}):[];
   var hot=rt.filter(function(r){return r[2]>=7.8}).length;
   boost*=1+Math.min(0.02,0.007*hot);
-  return {t:t,prior:prior,perf:perf,w:w,R:R+venue,venue:venue,venuePPG:venuePPG,ppg:ppg,boost:boost,topGoals:topGoals,scorers:sc,rt:rt};
+  return {t:t,ss:ss,prior:prior,perf:perf,w:w,R:R+venue,venue:venue,venuePPG:venuePPG,ppg:ppg,boost:boost,topGoals:topGoals,scorers:sc,rt:rt};
 }
 
 function pois(l,k){ var p=Math.exp(-l); for(var i=1;i<=k;i++) p*=l/i; return p; }
@@ -594,6 +618,8 @@ function matchHTML(L,m){
     rows+='<p>Forza storica <b>'+Math.round(S.prior)+'</b>'+(S.perf!=null?' · rendimento attuale <b>'+Math.round(S.perf)+'</b> (peso '+pct(S.w)+'%)':'')+' → forza stimata <b>'+Math.round(S.R)+'</b></p>';
     if(S.ppg!=null) rows+='<p>Andamento: <b>'+S.ppg.toFixed(2)+'</b> punti a partita'+(S.t.pts==null?' (ricavato dalla posizione)':'')+(S.t.gd!=null?', differenza reti <b>'+(S.t.gd>0?'+':'')+S.t.gd+'</b>':'')+'</p>';
     else rows+='<p class="na">Andamento non disponibile: conta solo la forza storica.</p>';
+    if(S.ss) rows+='<p>Statistiche di partita (ESPN, '+S.ss.n+' gare): tiri in porta <b>'+(S.ss.sot/S.ss.n>=0?'+':'')+(S.ss.sot/S.ss.n).toFixed(1).replace('.',',')+'</b> a partita rispetto agli avversari, altri tiri <b>'+(S.ss.sh/S.ss.n>=0?'+':'')+(S.ss.sh/S.ss.n).toFixed(1).replace('.',',')+'</b>, ammonizioni <b>'+(S.ss.cd/S.ss.n).toFixed(1).replace('.',',')+'</b> a partita</p>';
+    else rows+='<p class="na">Statistiche di partita non ancora disponibili: peso solo su classifica e differenza reti.</p>';
     if(S.venuePPG!=null) rows+='<p>'+(side==='h'?'In casa':'In trasferta')+': <b>'+S.venuePPG.toFixed(2)+'</b> punti a partita ('+(S.venue>=0?'+':'')+S.venue.toFixed(0)+' sulla forza)</p>';
     else rows+='<p>'+(side==='h'?'Gioca in casa: bonus campo '+L.hfa+' punti Elo':'Gioca in trasferta: nessun bonus campo')+'</p>';
     if(S.t.asr!=null) rows+='<p>Voto medio squadra (Sofascore): <b>'+S.t.asr.toFixed(2).replace('.',',')+'</b></p>';
@@ -714,7 +740,10 @@ var ARCH=(function(){try{var a=JSON.parse(localStorage.getItem('pronostici.archi
 function saveArch(){try{localStorage.setItem('pronostici.archivio',JSON.stringify(ARCH));}catch(_){}}
 function playedList(L){
   var names=L.teams.map(function(t){return t[0]}), seen={}, out=[];
-  function add(hn,an,d,t,h,a){ if(!hn||!an) return; var k=hn+'|'+an; if(seen[k]) return; seen[k]=1; out.push({k:k,h:hn,a:an,d:d,t:t,sc:{h:h,a:a,st:'FT'}}); }
+  var stBy={};
+  if(HIST&&HIST.leagues&&HIST.leagues[L.id]) HIST.leagues[L.id].forEach(function(e){ if(e.st){var a1=NameMatch.matchTeam(e.home,names),a2=NameMatch.matchTeam(e.away,names); if(a1&&a2) stBy[a1+'|'+a2]=e.st;} });
+  (L._xst||[]).forEach(function(x){ stBy[x.h+'|'+x.a]=x.st; });
+  function add(hn,an,d,t,h,a){ if(!hn||!an) return; var k=hn+'|'+an; if(seen[k]) return; seen[k]=1; out.push({k:k,h:hn,a:an,d:d,t:t,sc:{h:h,a:a,st:'FT'},stt:stBy[k]||null}); }
   L.matches.forEach(function(m){ if(m[4]&&m[4].st==='FT') add(m[2],m[3],m[0],m[1]||'00:00',m[4].h,m[4].a); });
   if(HIST&&HIST.leagues&&HIST.leagues[L.id]) HIST.leagues[L.id].forEach(function(e){
     var p=romeParts(e.utc); add(NameMatch.matchTeam(e.home,names),NameMatch.matchTeam(e.away,names),p.d,p.t,e.h,e.a);
@@ -725,23 +754,23 @@ function playedList(L){
   });
   Object.keys(A).forEach(function(k){
     var e=A[k]; if(seen[k]||names.indexOf(e.h)<0||names.indexOf(e.a)<0) return;
-    seen[k]=1; out.push({k:k,h:e.h,a:e.a,d:e.d,t:e.t,sc:{h:e.sh,a:e.sa,st:'FT'}});
+    seen[k]=1; out.push({k:k,h:e.h,a:e.a,d:e.d,t:e.t,sc:{h:e.sh,a:e.sa,st:'FT'},stt:stBy[k]||null});
   });
   if(dirty) saveArch();
   out.sort(function(x,y){return (x.d+x.t).localeCompare(y.d+y.t)});
   return out;
 }
 // Per ogni partita ricalcolo il pronostico con il modello e la classifica che c'era PRIMA di quel giorno,
-// ricostruita dai risultati precedenti. Voti Sofascore e marcatori restano fuori: sono dati di oggi.
+// ricostruita dai risultati precedenti, con le statistiche di partita già note a quel giorno. Voti Sofascore e marcatori restano fuori: sono dati di oggi.
 function backtest(L){
   var list=playedList(L), sig=L.id+'|'+list.map(function(x){return x.k+x.sc.h+'-'+x.sc.a}).join(',');
   if(L._bt&&L._bt.sig===sig) return L._bt.items;
-  var st={}, items=[];
+  var st={}, items=[], ts={};
   L.teams.forEach(function(t){st[t[0]]={pts:0,g:0,gf:0,ga:0};});
   list.forEach(function(x){
     var H=st[x.h], A=st[x.a]; if(!H||!A) return;
     var rows=L.teams.map(function(t){var s=st[t[0]]; return [t[0],t[1],s.g?s.pts:null,s.g,s.g?s.gf-s.ga:null,null,s.g?s.gf:null,null,null];});
-    var p=predict({T:L.T,hfa:L.hfa,teams:rows,scorers:{},ratings:null},x.h,x.a), sc=x.sc;
+    var p=predict({T:L.T,hfa:L.hfa,teams:rows,scorers:{},ratings:null,tstat:ts},x.h,x.a), sc=x.sc;
     items.push({k:x.k,d:x.d,t:x.t,h:x.h,a:x.a,sc:sc,md:Math.max(H.g,A.g)+1,real:outcomeOf(sc),
       sign:p.sign,psign:Math.max(p.p1,p.px,p.p2),signOk:evalSign(p,sc)==='ok',
       dbl:p.dbl,pdbl:p.pdbl,dblOk:evalDbl(p,sc)==='ok',
@@ -749,6 +778,11 @@ function backtest(L){
     var hg=sc.h, ag=sc.a;
     H.g++;A.g++;H.gf+=hg;H.ga+=ag;A.gf+=ag;A.ga+=hg;
     if(hg>ag) H.pts+=3; else if(hg<ag) A.pts+=3; else {H.pts++;A.pts++;}
+    var q=x.stt; if(q){
+      var th=ts[x.h]=ts[x.h]||{n:0,sot:0,sh:0,cd:0}, ta=ts[x.a]=ts[x.a]||{n:0,sot:0,sh:0,cd:0};
+      th.n++; th.sot+=q.hst-q.ast; th.sh+=(q.hs-q.hst)-(q.as-q.ast); th.cd+=q.hy+2*q.hr;
+      ta.n++; ta.sot+=q.ast-q.hst; ta.sh+=(q.as-q.ast)-(q.hs-q.hst); ta.cd+=q.ay+2*q.ar;
+    }
   });
   L._bt={sig:sig,items:items}; return items;
 }
@@ -1032,7 +1066,7 @@ function loadScores(){
 }
 function loadHistory(){
   if(typeof fetch!=='function'||location.protocol==='file:') return;
-  fetch('data/storico.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j){HIST=j; renderPanel();}}).catch(function(){});
+  fetch('data/storico.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j){HIST=j; LEAGUES.forEach(rebuildStats); render();}}).catch(function(){});
 }
 function loadLive(){
   if(typeof fetch!=='function'||location.protocol==='file:') return;
