@@ -1,0 +1,23 @@
+name: Analisi dati
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  analisi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node analisi/probe.mjs
+      - name: Salva
+        if: always()
+        run: |
+          mkdir -p /tmp/out && cp analisi-*.md /tmp/out/ || true
+          git config user.name analisi; git config user.email analisi@users.noreply.github.com
+          git checkout --orphan analisi-risultati
+          git rm -rf . -q
+          cp /tmp/out/* . || true
+          git add -A; git commit -q -m "probe"; git push -f origin analisi-risultati
