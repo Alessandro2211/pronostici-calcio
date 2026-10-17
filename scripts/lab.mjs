@@ -53,6 +53,10 @@ const VARIANTS = {
   'metà gol metà tiri in porta': { gd: (s) => 0.5 * (s.gf - s.ga) + 0.5 * 0.3 * (s.stf - s.sta) },
   'attuale + media gol del campionato': { gd: (s) => s.gf - s.ga, tEff: true },
   'metà gol metà xG + media gol': { gd: (s) => 0.5 * (s.gf - s.ga) + 0.5 * (s.xf - s.xa), tEff: true },
+  'attuale + 30% quote': { gd: (s) => s.gf - s.ga, w: 0.3 },
+  'attuale + 50% quote': { gd: (s) => s.gf - s.ga, w: 0.5 },
+  'attuale + 70% quote': { gd: (s) => s.gf - s.ga, w: 0.7 },
+  'xG x1,5 + 50% quote': { gd: (s) => (s.xf - s.xa) * 1.5, w: 0.5 },
   'metà gol metà xG + cartellini': { gd: (s) => 0.5 * (s.gf - s.ga) + 0.5 * (s.xf - s.xa) - 0.05 * (s.yc + 3 * s.rc - s.ycOpp - 3 * s.rcOpp) },
 };
 const blank = () => ({ pts: 0, g: 0, gf: 0, ga: 0, xf: 0, xa: 0, stf: 0, sta: 0, yc: 0, rc: 0, ycOpp: 0, rcOpp: 0 });
@@ -71,11 +75,17 @@ function evaluate(name, spec, minG) {
         const T = spec.tEff && played ? (L.T * 30 + (goals / played) * played) / (30 + played) : L.T;
         const rows = L.teams.map((t) => { const s = st[t[0]]; return [t[0], t[1], s.g ? s.pts : null, s.g, s.g ? spec.gd(s) : null, null, s.g ? s.gf : null, null, null]; });
         const pr = lib.predict({ T, hfa: L.hfa, teams: rows, scorers: {}, ratings: null }, m.h, m.a);
-        const probs = name === '__mercato' ? null : [pr.p1, pr.px, pr.p2];
+        if (!(m.oh && m.od && m.oa)) { H.g++; A.g++; H.gf += m.hg; H.ga += m.ag; A.gf += m.ag; A.ga += m.hg; H.xf += m.xh ?? m.hg; H.xa += m.xa ?? m.ag; A.xf += m.xa ?? m.ag; A.xa += m.xh ?? m.hg; H.stf += m.sth ?? 0; H.sta += m.sta ?? 0; A.stf += m.sta ?? 0; A.sta += m.sth ?? 0; H.yc += m.yh ?? 0; H.rc += m.rh ?? 0; A.yc += m.ya ?? 0; A.rc += m.ra ?? 0; H.ycOpp += m.ya ?? 0; H.rcOpp += m.rh ?? 0; A.ycOpp += m.yh ?? 0; A.rcOpp += m.rh ?? 0; if (m.hg > m.ag) H.pts += 3; else if (m.hg < m.ag) A.pts += 3; else { H.pts++; A.pts++; } goals += m.hg + m.ag; played++; continue; }
+        let probs = [pr.p1, pr.px, pr.p2], ov = pr.ou[1].over;
+        if (spec.w) {
+          const inv = [1 / m.oh, 1 / m.od, 1 / m.oa], sm = inv.reduce((x, y) => x + y, 0);
+          probs = probs.map((x, i) => (1 - spec.w) * x + spec.w * inv[i] / sm);
+          if (m.oo && m.ou) ov = (1 - spec.w) * ov + spec.w * ((1 / m.oo) / (1 / m.oo + 1 / m.ou));
+        }
         const k = m.hg > m.ag ? 0 : m.hg === m.ag ? 1 : 2;
         n++; sLL += ll(probs, k); sBr += brier(probs, k);
         if (probs.indexOf(Math.max(...probs)) === k) hit++;
-        const ov = pr.ou[1].over, isO = m.hg + m.ag > 2 ? 1 : 0;
+        const isO = m.hg + m.ag > 2 ? 1 : 0;
         nOU++; sOU += -Math.log(Math.max(1e-9, isO ? ov : 1 - ov));
       }
       H.g++; A.g++; H.gf += m.hg; H.ga += m.ag; A.gf += m.ag; A.ga += m.hg;
@@ -152,5 +162,15 @@ try {
     p('- rosters:', (s.rosters || []).length, '· ammonizioni nei roster:', JSON.stringify(((s.rosters || [])[0] || {}).roster ? ((s.rosters[0].roster[0] || {}).stats || []).slice(0, 12).map((x) => x.name + '=' + x.displayValue) : []));
   }
 } catch (e) { p('- ERRORE', e.message); }
+p('\n## ESPN: quote nelle partite in programma');
+for (const [id, code] of Object.entries({ 'serie-a': 'ita.1', premier: 'eng.1', liga: 'esp.1', bundesliga: 'ger.1', ligue1: 'fra.1', eredivisie: 'ned.1', primeira: 'por.1' })) {
+  try {
+    let evs = [];
+    for (const d of ['20261017', '20261018', '20261019']) { const sb = await (await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${d}`)).json(); evs = evs.concat(sb.events || []); }
+    const withOdds = evs.filter((e) => e.competitions && e.competitions[0] && e.competitions[0].odds && e.competitions[0].odds.length);
+    p(`- ${id}: partite 17-19/10 ${evs.length}, con quote ${withOdds.length}`);
+    if (withOdds[0]) p('  esempio', withOdds[0].name, JSON.stringify(withOdds[0].competitions[0].odds[0]).slice(0, 900));
+  } catch (e) { p('- ' + id + ' ERRORE', e.message); }
+}
 fs.writeFileSync('lab-result.md', out.join('\n') + '\n');
 console.log(out.join('\n'));
