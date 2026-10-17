@@ -462,7 +462,25 @@ function asrMean(L){
 // Pesi del modello. Verificati sulle stagioni 2022/23-2026/27 (prova a ritroso: ottimizzati su 2022-2025, misurati su 2025/26 e 2026/27).
 // cg: differenza reti, cp: punti a partita, kk: prudenza sui pochi dati (peso del campionato corrente = g/(g+kk)),
 // cs: tiri in porta, cn: altri tiri, cc: ammonizioni (giallo = 1, rosso = 2). Le sigle con A valgono quando mancano i tiri.
-var MP={cg:93,cp:170,kk:6,cs:21,cn:12,cc:24,cgA:165,cpA:212,kkA:9};
+var MP={wb:0.6,wo:0.5,cg:93,cp:170,kk:6,cs:21,cn:12,cc:24,cgA:165,cpA:212,kkA:9};
+var FD=null; // football-data.co.uk: statistiche di partita e quote dei bookmaker (seconda fonte, file data/fd.json)
+var FDX=null;
+function fdIndex(){
+  if(FDX) return FDX; FDX={};
+  if(!FD) return FDX;
+  (FD.m||[]).concat(FD.o||[]).forEach(function(e){ if(!e.o) return; var k=e.lg+'|'+e.h+'|'+e.a; (FDX[k]=FDX[k]||[]).push({d:e.d,o:e.o,ou:e.ou||null}); });
+  return FDX;
+}
+// Quote medie dei bookmaker per una partita (senza il margine): 1X2 e Over/Under 2,5
+function bookFor(lg,h,a,dt){
+  var list=fdIndex()[lg+'|'+h+'|'+a]; if(!list||!list.length) return null;
+  var ref=dt?Date.parse(dt+'T12:00:00Z'):Date.now(), best=null, bd=1e18;
+  list.forEach(function(x){ var dd=Math.abs(Date.parse(x.d+'T12:00:00Z')-ref); if(dd<bd){bd=dd;best=x;} });
+  if(!best||bd>(dt?2.5:9)*86400000) return null;
+  var i=best.o.map(function(v){return 1/v}), sm=i[0]+i[1]+i[2], r={p:[i[0]/sm,i[1]/sm,i[2]/sm],d:best.d,over:null};
+  if(best.ou){ var u=1/best.ou[0], v2=1/best.ou[1]; r.over=u/(u+v2); }
+  return r;
+}
 var CLI={}; // partite finite lette dal browser da ESPN prima che arrivino nello storico di GitHub
 function histEntries(L){
   var out=((HIST&&HIST.leagues&&HIST.leagues[L.id])||[]).slice(), seen={}, names=L.teams.map(function(t){return t[0]});
@@ -506,6 +524,14 @@ function absences(L,name){
   });
   return out;
 }
+function fdStat(s){return {hs:s[0],as:s[1],hst:s[2],ast:s[3],hc:s[4],ac:s[5],hf:s[6],af:s[7],hy:s[8],ay:s[9],hr:s[10],ar:s[11]};}
+// Elenco partite con statistiche: prima ESPN, poi football-data per quelle che mancano
+function statList(L){
+  var names=L.teams.map(function(t){return t[0]}), out=[], seen={};
+  histEntries(L).forEach(function(e){ if(!e.st) return; var h=NameMatch.matchTeam(e.home,names), a=NameMatch.matchTeam(e.away,names); if(h&&a&&!seen[h+'|'+a]){seen[h+'|'+a]=1; out.push({h:h,a:a,st:e.st,utc:e.utc});} });
+  if(FD) (FD.m||[]).forEach(function(e){ if(e.lg!==L.id||!e.s||seen[e.h+'|'+e.a]) return; seen[e.h+'|'+e.a]=1; out.push({h:e.h,a:e.a,st:fdStat(e.s),utc:e.d+'T12:00:00Z'}); });
+  return out;
+}
 function statRow(L,name){var s=L.tstat&&L.tstat[name]; return s&&s.n>=3?s:null;}
 // Somma, per squadra, differenza tiri in porta, differenza altri tiri e ammonizioni delle partite finite con statistiche (ESPN).
 function rebuildStats(L){
@@ -516,7 +542,7 @@ function rebuildStats(L){
     H.n++; H.sot+=st.hst-st.ast; H.sh+=(st.hs-st.hst)-(st.as-st.ast); H.cd+=st.hy+2*st.hr;
     A.n++; A.sot+=st.ast-st.hst; A.sh+=(st.as-st.ast)-(st.hs-st.hst); A.cd+=st.ay+2*st.ar;
   }
-  histEntries(L).forEach(function(e){ if(e.st) put(NameMatch.matchTeam(e.home,names),NameMatch.matchTeam(e.away,names),e.st); });
+  statList(L).forEach(function(e){ put(e.h,e.a,e.st); });
   L.tstat=agg; L._bt=null; rebuildScorers(L);
 }
 function teamState(L,name,isHome){
@@ -560,7 +586,7 @@ function teamState(L,name,isHome){
 
 function pois(l,k){ var p=Math.exp(-l); for(var i=1;i<=k;i++) p*=l/i; return p; }
 
-function predict(L,home,away){
+function predict(L,home,away,dt){
   var H=teamState(L,home,true), A=teamState(L,away,false);
   var d=H.R-A.R+L.hfa, k=0.00115;
   var lh=(L.T/2)*Math.exp(k*d)*H.boost, la=(L.T/2)*Math.exp(-k*d)*A.boost;
@@ -574,15 +600,17 @@ function predict(L,home,away){
     var q=grid[i][j]/tot; if(i>j)p1+=q; else if(i===j)px+=q; else p2+=q;
     if(i+j>=3) over+=q; if(i>0&&j>0) gg+=q; list.push([i,j,q]);
   }
+  var book=bookFor(L.oddsLg||L.id,home,away,dt), mp=[p1,px,p2], mover=over;
+  if(book){ var w=MP.wb; p1=(1-w)*p1+w*book.p[0]; px=(1-w)*px+w*book.p[1]; p2=(1-w)*p2+w*book.p[2]; if(book.over!=null) over=(1-MP.wo)*over+MP.wo*book.over; }
   list.sort(function(a,b){return b[2]-a[2]});
   var sign=(p1>=px&&p1>=p2)?'1':(p2>=px?'2':'X');
   var cons=list.filter(function(x){return sign==='1'?x[0]>x[1]:(sign==='2'?x[0]<x[1]:x[0]===x[1])});
   var tg=[];list.forEach(function(x){var n=x[0]+x[1];tg[n]=(tg[n]||0)+x[2];});
-  var ou=[1.5,2.5,3.5].map(function(k){var o=0;tg.forEach(function(v,n){if(n>k)o+=v;});return {line:k,over:o,under:1-o};});
+  var ou=[1.5,2.5,3.5].map(function(k){var o=0;tg.forEach(function(v,n){if(n>k)o+=v;}); if(k===2.5&&book&&book.over!=null) o=over; return {line:k,over:o,under:1-o};});
   var pr=[['1',p1],['X',px],['2',p2]].sort(function(a,b){return b[1]-a[1];});
   var dset=[pr[0][0],pr[1][0]].sort().join('');
   var dbl=({'12':'12','1X':'1X','2X':'X2'})[dset], pdbl=pr[0][1]+pr[1][1];
-  return {H:H,A:A,lh:lh,la:la,p1:p1,px:px,p2:p2,over:over,gg:gg,sign:sign,top:cons.slice(0,3),best:cons[0],modal:list[0],dbl:dbl,pdbl:pdbl,ou:ou};
+  return {book:book,model:mp,H:H,A:A,lh:lh,la:la,p1:p1,px:px,p2:p2,over:over,gg:gg,sign:sign,top:cons.slice(0,3),best:cons[0],modal:list[0],dbl:dbl,pdbl:pdbl,ou:ou};
 }
 
 function scorerProb(S,lambdaTeam,player){
@@ -656,7 +684,7 @@ function teamLine(L,n){
 }
 
 function matchHTML(L,m){
-  var p=predict(L,m[2],m[3]), best=p.best, max=Math.max(p.p1,p.px,p.p2);
+  var p=predict(L,m[2],m[3],m[0]), best=p.best, max=Math.max(p.p1,p.px,p.p2);
   var sign=p.sign;
   var time=m[1]?m[1]:'orario da definire';
   var covered=(p.H.perf!=null)&&(p.A.perf!=null);
@@ -669,11 +697,13 @@ function matchHTML(L,m){
     rows+='<p>Forza storica <b>'+Math.round(S.prior)+'</b>'+(S.perf!=null?' · rendimento attuale <b>'+Math.round(S.perf)+'</b> (peso '+pct(S.w)+'%)':'')+' → forza stimata <b>'+Math.round(S.R)+'</b></p>';
     if(S.ppg!=null) rows+='<p>Andamento: <b>'+S.ppg.toFixed(2)+'</b> punti a partita'+(S.t.pts==null?' (ricavato dalla posizione)':'')+(S.t.gd!=null?', differenza reti <b>'+(S.t.gd>0?'+':'')+S.t.gd+'</b>':'')+'</p>';
     else rows+='<p class="na">Andamento non disponibile: conta solo la forza storica.</p>';
-    if(S.ss) rows+='<p>Statistiche di partita (ESPN, '+S.ss.n+' gare): tiri in porta <b>'+(S.ss.sot/S.ss.n>=0?'+':'')+(S.ss.sot/S.ss.n).toFixed(1).replace('.',',')+'</b> a partita rispetto agli avversari, altri tiri <b>'+(S.ss.sh/S.ss.n>=0?'+':'')+(S.ss.sh/S.ss.n).toFixed(1).replace('.',',')+'</b>, ammonizioni <b>'+(S.ss.cd/S.ss.n).toFixed(1).replace('.',',')+'</b> a partita</p>';
+    if(S.ss) rows+='<p>Statistiche di partita (ESPN e football-data, '+S.ss.n+' gare): tiri in porta <b>'+(S.ss.sot/S.ss.n>=0?'+':'')+(S.ss.sot/S.ss.n).toFixed(1).replace('.',',')+'</b> a partita rispetto agli avversari, altri tiri <b>'+(S.ss.sh/S.ss.n>=0?'+':'')+(S.ss.sh/S.ss.n).toFixed(1).replace('.',',')+'</b>, ammonizioni <b>'+(S.ss.cd/S.ss.n).toFixed(1).replace('.',',')+'</b> a partita</p>';
     else rows+='<p class="na">Statistiche di partita non ancora disponibili: peso solo su classifica e differenza reti.</p>';
     if(S.venuePPG!=null) rows+='<p>'+(side==='h'?'In casa':'In trasferta')+': <b>'+S.venuePPG.toFixed(2)+'</b> punti a partita ('+(S.venue>=0?'+':'')+S.venue.toFixed(0)+' sulla forza)</p>';
     else rows+='<p>'+(side==='h'?'Gioca in casa: bonus campo '+L.hfa+' punti Elo':'Gioca in trasferta: nessun bonus campo')+'</p>';
     if(S.t.asr!=null) rows+='<p>Voto medio squadra (Sofascore): <b>'+S.t.asr.toFixed(2).replace('.',',')+'</b></p>';
+    if(side!=='h') {} else if(p.book) rows+='<p>Quote dei bookmaker (media, senza margine): 1 <b>'+pct(p.book.p[0])+'%</b> · X <b>'+pct(p.book.p[1])+'%</b> · 2 <b>'+pct(p.book.p[2])+'%</b>'+(p.book.over!=null?' · Over 2,5 <b>'+pct(p.book.over)+'%</b>':'')+'. Il pronostico mescola modello ('+pct(1-MP.wb)+'%) e quote ('+pct(MP.wb)+'%).</p>';
+    else if(side==='h') rows+='<p class="na">Quote dei bookmaker non disponibili per questa partita: pronostico del solo modello.</p>';
     if(S.ab&&S.ab.length) rows+='<p>Assenze probabili: <b>'+S.ab.map(function(a){return a.n+' ('+a.why+')'}).join(', ')+'</b>. Nelle stime pesano meno gol.</p>';
     else if(S.ab) rows+='<p>Nessuna assenza evidente tra i giocatori chiave (hanno giocato l’ultima gara).</p>';
     if(S.scorers.length){
@@ -778,7 +808,7 @@ function resultHTML(L,m,p){
 }
 function roundSummary(L){
   var fin=0,sOk=0,dOk=0,live=0,lOk=0;
-  L.matches.forEach(function(m){ if(!m[4]) return; var p=predict(L,m[2],m[3]);
+  L.matches.forEach(function(m){ if(!m[4]) return; var p=predict(L,m[2],m[3],m[0]);
     if(m[4].st==='FT'){fin++; if(evalSign(p,m[4])==='ok') sOk++; if(evalDbl(p,m[4])==='ok') dOk++;}
     else {live++; if(evalSign(p,m[4])==='on') lOk++;} });
   if(!fin&&!live) return '';
@@ -794,7 +824,7 @@ function saveArch(){try{localStorage.setItem('pronostici.archivio',JSON.stringif
 function playedList(L){
   var names=L.teams.map(function(t){return t[0]}), seen={}, out=[];
   var stBy={};
-  histEntries(L).forEach(function(e){ if(e.st){var a1=NameMatch.matchTeam(e.home,names),a2=NameMatch.matchTeam(e.away,names); if(a1&&a2) stBy[a1+'|'+a2]=e.st;} });
+  statList(L).forEach(function(e){ stBy[e.h+'|'+e.a]=e.st; });
   function add(hn,an,d,t,h,a){ if(!hn||!an) return; var k=hn+'|'+an; if(seen[k]) return; seen[k]=1; out.push({k:k,h:hn,a:an,d:d,t:t,sc:{h:h,a:a,st:'FT'},stt:stBy[k]||null}); }
   L.matches.forEach(function(m){ if(m[4]&&m[4].st==='FT') add(m[2],m[3],m[0],m[1]||'00:00',m[4].h,m[4].a); });
   histEntries(L).forEach(function(e){
@@ -822,7 +852,7 @@ function backtest(L){
   list.forEach(function(x){
     var H=st[x.h], A=st[x.a]; if(!H||!A) return;
     var rows=L.teams.map(function(t){var s=st[t[0]]; return [t[0],t[1],s.g?s.pts:null,s.g,s.g?s.gf-s.ga:null,null,s.g?s.gf:null,null,null];});
-    var p=predict({T:L.T,hfa:L.hfa,teams:rows,scorers:{},ratings:null,tstat:ts},x.h,x.a), sc=x.sc;
+    var p=predict({T:L.T,hfa:L.hfa,teams:rows,scorers:{},ratings:null,tstat:ts,oddsLg:L.id},x.h,x.a,x.d), sc=x.sc;
     items.push({k:x.k,d:x.d,t:x.t,h:x.h,a:x.a,sc:sc,md:Math.max(H.g,A.g)+1,real:outcomeOf(sc),
       sign:p.sign,psign:Math.max(p.p1,p.px,p.p2),signOk:evalSign(p,sc)==='ok',
       dbl:p.dbl,pdbl:p.pdbl,dblOk:evalDbl(p,sc)==='ok',
@@ -877,7 +907,7 @@ function slipWhen(m){return (m[0]==='W'?'weekend':new Date(m[0]+'T12:00:00').toL
 function slipHTML(L){
   var rows='',cs=1,cd=1;
   L.matches.forEach(function(m){
-    var p=predict(L,m[2],m[3]), mx=Math.max(p.p1,p.px,p.p2), bo=bestOU(p), o=bo.o, ob=bo.ob, sc=m[4];
+    var p=predict(L,m[2],m[3],m[0]), mx=Math.max(p.p1,p.px,p.p2), bo=bestOU(p), o=bo.o, ob=bo.ob, sc=m[4];
     var ms=sc?'<br><span class="vd '+(evalSign(p,sc)==='ok'?'ok':evalSign(p,sc)==='ko'?'ko':'on')+'">'+VLAB[evalSign(p,sc)]+'</span>':'', md=sc?'<br><span class="vd '+(evalDbl(p,sc)==='ok'?'ok':evalDbl(p,sc)==='ko'?'ko':'on')+'">'+VLAB[evalDbl(p,sc)]+'</span>':'', mo='';
     if(sc){var eo=evalOU(ob,o.line,sc); mo='<br><span class="vd '+(eo==='ok'?'ok':eo==='ko'?'ko':'on')+'">'+VLAB[eo]+'</span>';}
     cs*=mx; cd*=p.pdbl;
@@ -1051,7 +1081,7 @@ function renderLiveNow(){
     var names=L.teams.map(function(t){return t[0]});
     out+='<div class="lngrp">'+L.name+'</div>'+rows.map(function(lm){
       var hn=NameMatch.matchTeam(lm.home,names), an=NameMatch.matchTeam(lm.away,names), so=scoreObj(lm.status,lm.score,lm.minute);
-      var chip=''; if(hn&&an&&so){ var p=predict(L,hn,an); chip=vd('Segno '+p.sign,evalSign(p,so)); }
+      var chip=''; if(hn&&an&&so){ var p=predict(L,hn,an,null); chip=vd('Segno '+p.sign,evalSign(p,so)); }
       return '<button type="button" class="lnrow" data-lgo="'+L.id+'"><span class="lnflag">'+flag(L.id)+'</span>'
         +'<span class="lnt h">'+(hn||lm.home.name)+'</span><span class="lns">'+so.h+'–'+so.a+'</span><span class="lnt a">'+(an||lm.away.name)+'</span>'
         +'<span class="lnm"><span>'+phaseLabel(so)+'</span>'+chip+'</span></button>';
@@ -1117,13 +1147,17 @@ function loadScores(){
   if(typeof fetch!=='function'||location.protocol==='file:') return;
   fetch('data/live.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j) applyScores(j);}).catch(function(){});
 }
+function loadFd(){
+  if(typeof fetch!=='function'||location.protocol==='file:') return;
+  fetch('data/fd.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.m){FD=j; FDX=null; LEAGUES.forEach(rebuildStats); render();}}).catch(function(){});
+}
 function loadHistory(){
   if(typeof fetch!=='function'||location.protocol==='file:') return;
   fetch('data/storico.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j){HIST=j; LEAGUES.forEach(rebuildStats); render();}}).catch(function(){});
 }
 function loadLive(){
   if(typeof fetch!=='function'||location.protocol==='file:') return;
-  loadHistory();
+  loadHistory(); loadFd();
   fetch('data/dati.json?'+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j) applyLive(j);}).catch(function(){});
 }
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){ try{navigator.serviceWorker.register('sw.js');}catch(_){} }

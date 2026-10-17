@@ -116,6 +116,7 @@ try:
             else: q=[(1-w)*pm[i]+w*pb[i] for i in range(3)]
             tot+=-math.log(max(q[r[8]],1e-9)); n+=1
         return tot/n,n
+    TRAIN=['2223','2324','2425']; TEST=['2526','2627']
     tr=evaluate(PB,TRAIN); te=evaluate(PB,TEST)
     out.append('## Mescolanza con le quote (log-loss, più basso è meglio)')
     for nm,rows in (('allenamento 2022-25',tr),('verifica 2025/26-2026/27',te)):
