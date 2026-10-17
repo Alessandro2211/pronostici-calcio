@@ -99,6 +99,10 @@ def evaluate(P,seasons):
                     res.append((-math.log(max(p[o],1e-9)),sum((p[i]-(1 if i==o else 0))**2 for i in range(3)),1 if max(range(3),key=lambda i:p[i])==o else 0,s,lg,m["oh"],m["od"],m["oa"],o,p))
                 for t,x,gf,ga,sh,sot,shopp,sotopp,yc,rc in ((m['h'],H,m['hg'],m['ag'],m['hs'],m['hst'],m['as_'],m['ast'],m['hy'],m['hr']),(m['a'],A,m['ag'],m['hg'],m['as_'],m['ast'],m['hs'],m['hst'],m['ay'],m['ar'])):
                     x['g']+=1; x['pts']+=3 if gf>ga else (1 if gf==ga else 0); x['gd']+=gf-ga
+                    if None not in (sh,sot,shopp,sotopp):
+                        x['ng']+=1; x['sot']+=sot-sotopp; x['sh']+=(sh-sot)-(shopp-sotopp)
+                        x['cd']+=(yc or 0)+2*(rc or 0)
+    return res
 
 import traceback
 try:
