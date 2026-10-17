@@ -42,7 +42,7 @@ if (process.env.GITHUB_REPOSITORY) {
 }
 
 const get = async (u) => { const r = await fetch(u, { headers: { 'user-agent': 'Mozilla/5.0 (pronostici-calcio)' } }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); };
-const out = { generatedAt: now.toISOString(), season, m: [], o: [], bad: [] };
+const out = { generatedAt: now.toISOString(), season, bad: [], m: [], o: [] };
 const bad = new Set();
 const map = (lg, n) => { const x = NameMatch.matchTeam({ name: n, shortName: n }, names[lg]); if (!x) bad.add(lg + ':' + n); return x; };
 let ok = 0;
