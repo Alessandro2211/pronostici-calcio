@@ -923,8 +923,32 @@ function slipHTML(L){
    +'<div class="slipsum"><p>Tutte le singole giuste: <b>'+fmtP(cs)+'</b></p><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p></div>'
    +'<p class="tsub" style="margin:0">Stime statistiche, non garantiscono nessun esito. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
 }
+/* ---------- SCHEDINA MISTA: le scelte più sicure di tutti i campionati ---------- */
+// Cinque doppie e cinque Over 1,5 con la probabilità più alta, prese da campionati diversi tra le partite non ancora iniziate.
+function mixSlipHTML(){
+  var pool=[]; LEAGUES.forEach(function(L){ L.matches.forEach(function(m){
+    if(m[4]) return; var p=predict(L,m[2],m[3],m[0]); pool.push({L:L,m:m,p:p,o15:p.ou[0].over});
+  });});
+  var N=5, used={}, dbl=pool.slice().sort(function(a,b){return b.p.pdbl-a.p.pdbl}).slice(0,N);
+  dbl.forEach(function(x){used[x.L.id+x.m[2]+x.m[3]]=1;});
+  var ov=pool.filter(function(x){return !used[x.L.id+x.m[2]+x.m[3]]}).sort(function(a,b){return b.o15-a.o15}).slice(0,N);
+  function row(x,kind){
+    var pk=kind==='d'?'<span class="pick d">'+x.p.dbl+'</span> <span class="tsub">'+pct(x.p.pdbl)+'%</span>':'<span class="pick ou">Over 1,5</span> <span class="tsub">'+pct(x.o15)+'%</span>';
+    return '<tr><td><b>'+x.m[2]+'</b> – <b>'+x.m[3]+'</b><div class="tsub">'+x.L.name+' · '+slipWhen(x.m)+'</div></td><td>'+pk+(x.p.book?' <span class="tsub" title="con le quote dei bookmaker">•</span>':'')+'</td></tr>';
+  }
+  var cd=dbl.reduce(function(a,x){return a*x.p.pdbl},1), co=ov.reduce(function(a,x){return a*x.o15},1);
+  if(!pool.length) return '<div class="shead"><div><span class="kicker">Schedina mista</span><h3 id="slipTitle">Tutti i campionati</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div><div class="empty">Non ci sono partite ancora da giocare nelle giornate caricate.</div>';
+  return '<div class="shead"><div><span class="kicker">Schedina mista · squadre di campionati diversi</span><h3 id="slipTitle">Le più sicure</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div>'
+   +'<div class="tw"><table class="slip"><thead><tr><th>Partita</th><th>Scelta</th></tr></thead><tbody>'
+   +'<tr><td colspan="2" class="tsub"><b>Doppia chance con la probabilità più alta</b></td></tr>'+dbl.map(function(x){return row(x,'d')}).join('')
+   +'<tr><td colspan="2" class="tsub"><b>Over 1,5 con la probabilità più alta</b></td></tr>'+ov.map(function(x){return row(x,'o')}).join('')
+   +'</tbody></table></div>'
+   +'<div class="slipsum"><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p><p>Tutti gli Over giusti: <b>'+fmtP(co)+'</b></p><p>Tutte le dieci giuste: <b>'+fmtP(cd*co)+'</b></p></div>'
+   +'<p class="tsub" style="margin:0">I punti (•) indicano le partite con quote dei bookmaker nel calcolo. Probabilità stimate, non garantiscono nessun esito; più partite si uniscono, più scende la probabilità che vadano tutte bene. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
+}
 var slipId=null;
 function openSlip(id){
+  if(id==='mix'){ slipId='mix'; $('slipbox').innerHTML=mixSlipHTML(); $('slip').hidden=false; var c0=$('slipClose'); if(c0) c0.focus(); return; }
   slipId=id; var L=LEAGUES.filter(function(l){return l.id===id})[0]; if(!L||!L.matches.length) return;
   $('slipbox').innerHTML=slipHTML(L); $('slip').hidden=false;
   var c=$('slipClose'); if(c) c.focus();
@@ -944,7 +968,7 @@ function renderPanel(){
   var L=cur();
   var tabs=[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']];
   var rounds='<button class="rbtn" aria-pressed="true">Giornata '+L.round+' · '+L.dates+'</button>'
-    +'<button class="rbtn" disabled title="Non ancora caricata">Giornata '+(L.round+1)+'</button>'+'<button class="rbtn" data-slip="'+L.id+'">Schedina</button>';
+    +'<button class="rbtn" disabled title="Non ancora caricata">Giornata '+(L.round+1)+'</button>'+'<button class="rbtn" data-slip="'+L.id+'">Schedina</button><button class="rbtn" data-slip="mix">Schedina mista</button>';
   var body = state.tab==='partite'?partiteHTML(L):state.tab==='giocate'?giocateHTML(L):state.tab==='classifica'?classificaHTML(L):state.tab==='marcatori'?marcatoriHTML(L):state.tab==='voti'?votiHTML(L):metodoHTML();
   $('panel').innerHTML=
     '<div class="phead"><div class="ptitle"><span class="emblem" data-lg="'+L.id+'" aria-hidden="true">'+flag(L.id)+'</span><div><h2>'+L.name+'</h2><span>'+L.country+'</span></div></div>'
@@ -1014,7 +1038,7 @@ function applyScores(live){
       if(so.st==='FT'&&!(m[4]&&m[4].st==='FT')){ JUST[hn+'|'+an]=Date.now(); ended=true; }
       m[4]=so;changed=true;} });
   });
-  if(changed){ if(ended) loadHistory(); render(); if(slipId&&!$('slip').hidden){var L2=LEAGUES.filter(function(l){return l.id===slipId})[0]; if(L2) $('slipbox').innerHTML=slipHTML(L2);} }
+  if(changed){ if(ended) loadHistory(); render(); if(slipId&&!$('slip').hidden){ if(slipId==='mix') $('slipbox').innerHTML=mixSlipHTML(); else {var L2=LEAGUES.filter(function(l){return l.id===slipId})[0]; if(L2) $('slipbox').innerHTML=slipHTML(L2);} } }
 }
 function applyLive(data){
   var summary=[], when=data.generatedAt?new Date(data.generatedAt):null;
