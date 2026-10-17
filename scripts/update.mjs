@@ -71,8 +71,16 @@ function toMatch(ev) {
   if (!h || !a) return null;
   const st = status(ev);
   const n = (v) => (v == null || v === '' || isNaN(+v) ? null : +v);
+  const sideOf = (d) => (d.team && String(d.team.id) === String(h.team.id) ? 'h' : d.team && String(d.team.id) === String(a.team.id) ? 'a' : null);
+  const goals = [], reds = [];
+  (comp.details || []).forEach((d) => {
+    const who = d.athletesInvolved && d.athletesInvolved[0] && d.athletesInvolved[0].displayName, sd = sideOf(d);
+    if (!who || !sd) return;
+    if (d.scoringPlay && !d.ownGoal && !d.shootout) goals.push([who, sd]);
+    if (d.redCard) reds.push([who, sd]);
+  });
   return {
-    id: ev.id, utc: ev.date, status: st, home: tm(h.team), away: tm(a.team),
+    id: ev.id, utc: ev.date, status: st, home: tm(h.team), away: tm(a.team), goals, reds,
     score: st === 'TIMED' || st === 'POSTPONED' ? null : { h: n(h.score), a: n(a.score) },
     minute: st === 'IN_PLAY' && ev.status.displayClock ? ev.status.displayClock : undefined,
   };
@@ -182,7 +190,15 @@ const addHist = (id, m) => {
   if (m.status !== 'FINISHED' || !m.score || m.score.h == null || m.score.a == null) return;
   if (!hist.leagues[id]) hist.leagues[id] = new Map();
   const old = hist.leagues[id].get(key(m));
-  hist.leagues[id].set(key(m), { id: m.id || (old && old.id), utc: m.utc, home: m.home, away: m.away, h: m.score.h, a: m.score.a, ...(old && old.st ? { st: old.st } : {}), ...(old && old.sa ? { sa: old.sa } : {}) });
+  const sum = (m.goals || []).length;
+  const goalsOk = sum >= 1 || m.score.h + m.score.a === 0; // dettagli presenti (o partita 0-0)
+  const g = goalsOk ? m.goals : old && old.g;
+  hist.leagues[id].set(key(m), {
+    id: m.id || (old && old.id), utc: m.utc, home: m.home, away: m.away, h: m.score.h, a: m.score.a,
+    ...(g && g.length ? { g } : {}), ...(m.reds && m.reds.length ? { rc: m.reds } : old && old.rc ? { rc: old.rc } : {}),
+    ...(old && old.st ? { st: old.st } : {}), ...(old && old.sa ? { sa: old.sa } : {}),
+    ...(old && old.pl ? { pl: old.pl } : {}), ...(old && old.pa ? { pa: old.pa } : {}),
+  });
 };
 
 // Statistiche di ogni partita finita (tiri, tiri in porta, corner, falli, ammonizioni, possesso), dal riepilogo di ESPN.
@@ -209,9 +225,20 @@ function parseStats(js, e) {
     hp: out.home.possessionPct == null ? null : out.home.possessionPct,
   };
 }
+// Chi è sceso in campo (titolari e subentrati) dal riepilogo: serve a capire quali giocatori chiave mancano nell'ultima gara.
+function parseRoster(js) {
+  const out = {};
+  for (const r of js.rosters || []) {
+    const names = (r.roster || []).filter((x) => x.starter || x.subbedIn).map((x) => x.athlete && x.athlete.displayName).filter(Boolean);
+    if (r.homeAway === 'home' || r.homeAway === 'away') out[r.homeAway === 'home' ? 'h' : 'a'] = names;
+  }
+  return out.h && out.a && out.h.length >= 11 && out.a.length >= 11 ? out : null;
+}
+const PL_DAYS = 25;
 async function fillStats(id, code, cap) {
   const all = [...(hist.leagues[id] || new Map()).values()];
-  const todo = all.filter((e) => e.id && !e.st && (e.sa || 0) < 3).sort((a, b) => Date.parse(b.utc) - Date.parse(a.utc)).slice(0, cap);
+  const recent = (e) => Date.now() - Date.parse(e.utc) < PL_DAYS * DAY;
+  const todo = all.filter((e) => e.id && ((!e.st && (e.sa || 0) < 3) || (!e.pl && recent(e) && (e.pa || 0) < 3))).sort((a, b) => Date.parse(b.utc) - Date.parse(a.utc)).slice(0, cap);
   if (!todo.length) return;
   let ok = 0, fail = 0, empty = 0;
   const worker = async () => {
@@ -219,8 +246,8 @@ async function fillStats(id, code, cap) {
       const e = todo.shift();
       try {
         const js = await espn(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/summary?event=${e.id}`);
-        const st = parseStats(js, e);
-        if (st) { e.st = st; ok++; } else { e.sa = (e.sa || 0) + 1; empty++; }
+        if (!e.st) { const st = parseStats(js, e); if (st) { e.st = st; ok++; } else { e.sa = (e.sa || 0) + 1; empty++; } }
+        if (!e.pl && recent(e)) { const pl = parseRoster(js); if (pl) e.pl = pl; else e.pa = (e.pa || 0) + 1; }
       } catch { fail++; }
     }
   };
@@ -304,7 +331,7 @@ if (process.env.GITHUB_REPOSITORY) {
     const res = await fetch(`https://${owner.toLowerCase()}.github.io/${name}/data/storico.json?t=${now}`);
     if (res.ok) {
       const j = await res.json();
-      hist.covered = j.covered || {};
+      hist.covered = j.v === 2 ? (j.covered || {}) : {}; // versione 2: marcatori per partita, riletto tutto il campionato una volta
       for (const [id, list] of Object.entries(j.leagues || {})) {
         hist.leagues[id] = new Map(list.map((e) => [e.home.name + '|' + e.away.name, e]));
       }
@@ -365,7 +392,7 @@ if (!result) {
 if (!Object.keys(result.leagues).length) { console.log('::error::Nessun campionato scaricato: non pubblico.'); process.exit(1); }
 writeJson(OUT, result);
 writeJson(OUT_LIVE, live);
-const histOut = { generatedAt: iso, covered: hist.covered, leagues: {} };
-for (const [id, mp] of Object.entries(hist.leagues)) histOut.leagues[id] = [...mp.values()].sort((a, b) => Date.parse(a.utc) - Date.parse(b.utc));
+const histOut = { v: 2, generatedAt: iso, covered: hist.covered, leagues: {} };
+for (const [id, mp] of Object.entries(hist.leagues)) histOut.leagues[id] = [...mp.values()].sort((a, b) => Date.parse(a.utc) - Date.parse(b.utc)).map((e) => { if (e.pl && Date.now() - Date.parse(e.utc) > PL_DAYS * DAY) { const { pl, pa, ...r } = e; return r; } return e; });
 writeJson(OUT_HIST, histOut);
 console.log('Scritti dati.json (' + Object.keys(result.leagues).length + ' campionati), live.json (' + live.matches.length + ' partite) e storico.json');

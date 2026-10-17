@@ -463,6 +463,49 @@ function asrMean(L){
 // cg: differenza reti, cp: punti a partita, kk: prudenza sui pochi dati (peso del campionato corrente = g/(g+kk)),
 // cs: tiri in porta, cn: altri tiri, cc: ammonizioni (giallo = 1, rosso = 2). Le sigle con A valgono quando mancano i tiri.
 var MP={cg:93,cp:170,kk:6,cs:21,cn:12,cc:24,cgA:165,cpA:212,kkA:9};
+var CLI={}; // partite finite lette dal browser da ESPN prima che arrivino nello storico di GitHub
+function histEntries(L){
+  var out=((HIST&&HIST.leagues&&HIST.leagues[L.id])||[]).slice(), seen={}, names=L.teams.map(function(t){return t[0]});
+  out.forEach(function(e){seen[e.home.name+'|'+e.away.name]=1;});
+  (CLI[L.id]||[]).forEach(function(e){ if(!seen[e.home.name+'|'+e.away.name]) out.push(e); });
+  return out;
+}
+function simple(x){return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();}
+// Marcatori ricavati dalle partite finite (stessa fonte ESPN): si aggiornano appena finisce l'ultima partita
+function rebuildScorers(L){
+  var names=L.teams.map(function(t){return t[0]}), per={}, goals=0, listed=0, played=0;
+  histEntries(L).forEach(function(e){
+    var hn=NameMatch.matchTeam(e.home,names), an=NameMatch.matchTeam(e.away,names); if(!hn||!an) return;
+    played+=e.h+e.a; (e.g||[]).forEach(function(g){ var tn=g[1]==='h'?hn:an; var o=per[tn]=per[tn]||{}; o[g[0]]=(o[g[0]]||0)+1; listed++; });
+  });
+  if(!played||listed<played*0.85) return; // dettagli incompleti: restano i marcatori del file di GitHub
+  var ts={}, all=[];
+  Object.keys(per).forEach(function(tn){ var arr=Object.keys(per[tn]).map(function(p){return [p,per[tn][p]];}).sort(function(a,b){return b[1]-a[1];}); ts[tn]=arr.slice(0,6); arr.forEach(function(x){all.push({p:x[0],t:tn,g:x[1]});}); });
+  all.sort(function(a,b){return b.g-a.g;}); var top={}; all.slice(0,20).forEach(function(x){(top[x.t]=top[x.t]||[]).push([x.p,x.g]);});
+  L.tscorers=ts; L.scorers=top; L.scorersLive=true;
+}
+// Giocatori importanti che nell'ultima partita della squadra non sono scesi in campo (o sono stati espulsi): assenza probabile
+function absences(L,name){
+  var list=histEntries(L), names=L.teams.map(function(t){return t[0]}), last=null, side=null;
+  list.forEach(function(e){
+    var hn=NameMatch.matchTeam(e.home,names), an=NameMatch.matchTeam(e.away,names);
+    var sd=hn===name?'h':(an===name?'a':null); if(!sd) return;
+    if(!last||Date.parse(e.utc)>Date.parse(last.utc)){last=e;side=sd;}
+  });
+  if(!last||!last.pl||Date.now()-Date.parse(last.utc)>16*86400000) return null;
+  var squad=(last.pl[side]||[]).map(simple), red=(last.rc||[]).filter(function(r){return r[1]===side}).map(function(r){return simple(r[0])});
+    var out=[];
+  ((L.tscorers&&L.tscorers[name])||(L.scorers&&L.scorers[name])||[]).slice(0,3).forEach(function(pl){
+    var s=simple(pl[0]); if(red.indexOf(s)>=0) out.push({n:pl[0],g:pl[1],why:'espulso nell’ultima gara'}); else if(squad.indexOf(s)<0) out.push({n:pl[0],g:pl[1],why:'non è sceso in campo nell’ultima gara'});
+  });
+  if(L.ratings&&!L.ratings.stale) L.ratings.items.filter(function(r){return r[1]===name&&r[2]>=7.4;}).forEach(function(r){
+    var s=simple(r[0]), sur=s.split(' ').pop();
+    var inSquad=squad.some(function(q){return q===s||q.split(' ').pop()===sur||q.indexOf(s)>=0;});
+    var isRed=red.some(function(q){return q.split(' ').pop()===sur;});
+    if((!inSquad||isRed)&&!out.some(function(o){return simple(o.n).split(' ').pop()===sur;})) out.push({n:r[0],r:r[2],why:isRed?'espulso nell’ultima gara':'non è sceso in campo nell’ultima gara'});
+  });
+  return out;
+}
 function statRow(L,name){var s=L.tstat&&L.tstat[name]; return s&&s.n>=3?s:null;}
 // Somma, per squadra, differenza tiri in porta, differenza altri tiri e ammonizioni delle partite finite con statistiche (ESPN).
 function rebuildStats(L){
@@ -473,9 +516,8 @@ function rebuildStats(L){
     H.n++; H.sot+=st.hst-st.ast; H.sh+=(st.hs-st.hst)-(st.as-st.ast); H.cd+=st.hy+2*st.hr;
     A.n++; A.sot+=st.ast-st.hst; A.sh+=(st.as-st.ast)-(st.hs-st.hst); A.cd+=st.ay+2*st.ar;
   }
-  if(HIST&&HIST.leagues&&HIST.leagues[L.id]) HIST.leagues[L.id].forEach(function(e){ if(e.st) put(NameMatch.matchTeam(e.home,names),NameMatch.matchTeam(e.away,names),e.st); });
-  (L._xst||[]).forEach(function(x){ put(x.h,x.a,x.st); });
-  L.tstat=agg; L._bt=null;
+  histEntries(L).forEach(function(e){ if(e.st) put(NameMatch.matchTeam(e.home,names),NameMatch.matchTeam(e.away,names),e.st); });
+  L.tstat=agg; L._bt=null; rebuildScorers(L);
 }
 function teamState(L,name,isHome){
   var t=teamRow(L,name);
@@ -498,13 +540,22 @@ function teamState(L,name,isHome){
     var s=isHome?t.split.h:t.split.a;
     if(s && s[1]>0){ venuePPG=s[0]/s[1]; venue=(venuePPG-ppg)*30*(s[1]/(s[1]+4)); }
   }
-  var sc=(L.scorers&&L.scorers[name])||[];
-  var topGoals=sc.reduce(function(a,p){return a+p[1]},0);
+  var sc=((L.tscorers&&L.tscorers[name])||(L.scorers&&L.scorers[name])||[]).slice(0,3);
+  var ab=absences(L,name)||[], absN=ab.map(function(a){return simple(a.n)});
+  var isAbs=function(n){var s=simple(n), sur=s.split(' ').pop(); return absN.some(function(x){return x===s||x.split(' ').pop()===sur;});};
+  var scOn=sc.filter(function(p){return !isAbs(p[0])});
+  var topGoals=scOn.reduce(function(a,p){return a+p[1]},0);
   var boost=1+Math.min(0.06,0.006*topGoals);
   var rt=(L.ratings&&!L.ratings.stale)?L.ratings.items.filter(function(r){return r[1]===name}):[];
-  var hot=rt.filter(function(r){return r[2]>=7.8}).length;
+  var rtOn=rt.filter(function(r){return !isAbs(r[0])});
+  var hot=rtOn.filter(function(r){return r[2]>=7.8}).length;
   boost*=1+Math.min(0.02,0.007*hot);
-  return {t:t,ss:ss,prior:prior,perf:perf,w:w,R:R+venue,venue:venue,venuePPG:venuePPG,ppg:ppg,boost:boost,topGoals:topGoals,scorers:sc,rt:rt};
+  // chi manca pesa più di chi c'è: tolgo una parte dei gol attesi in proporzione ai gol del giocatore assente (prudente, non verificato su stagioni passate)
+  if(ab.length){
+    var gf=t.gf!=null?t.gf:Math.max(1,(g||5)*1.3), lostSh=ab.reduce(function(a,x){return a+(x.g||0)},0)/Math.max(gf,1), lostRt=ab.filter(function(x){return x.r>=7.8}).length;
+    boost*=1-Math.min(0.08,0.15*lostSh+0.007*lostRt);
+  }
+  return {t:t,ab:ab,ss:ss,prior:prior,perf:perf,w:w,R:R+venue,venue:venue,venuePPG:venuePPG,ppg:ppg,boost:boost,topGoals:topGoals,scorers:scOn,rt:rt};
 }
 
 function pois(l,k){ var p=Math.exp(-l); for(var i=1;i<=k;i++) p*=l/i; return p; }
@@ -623,6 +674,8 @@ function matchHTML(L,m){
     if(S.venuePPG!=null) rows+='<p>'+(side==='h'?'In casa':'In trasferta')+': <b>'+S.venuePPG.toFixed(2)+'</b> punti a partita ('+(S.venue>=0?'+':'')+S.venue.toFixed(0)+' sulla forza)</p>';
     else rows+='<p>'+(side==='h'?'Gioca in casa: bonus campo '+L.hfa+' punti Elo':'Gioca in trasferta: nessun bonus campo')+'</p>';
     if(S.t.asr!=null) rows+='<p>Voto medio squadra (Sofascore): <b>'+S.t.asr.toFixed(2).replace('.',',')+'</b></p>';
+    if(S.ab&&S.ab.length) rows+='<p>Assenze probabili: <b>'+S.ab.map(function(a){return a.n+' ('+a.why+')'}).join(', ')+'</b>. Nelle stime pesano meno gol.</p>';
+    else if(S.ab) rows+='<p>Nessuna assenza evidente tra i giocatori chiave (hanno giocato l’ultima gara).</p>';
     if(S.scorers.length){
       rows+='<p>Marcatori in forma: effetto <b>+'+Math.round((S.boost-1)*1000)/10+'%</b> sui gol attesi</p>';
       rows+=S.scorers.map(function(pl){return '<p>Segna: <b>'+pl[0]+'</b> '+pct(scorerProb(S,lam,pl))+'% ('+pl[1]+' gol)</p>'}).join('');
@@ -741,11 +794,10 @@ function saveArch(){try{localStorage.setItem('pronostici.archivio',JSON.stringif
 function playedList(L){
   var names=L.teams.map(function(t){return t[0]}), seen={}, out=[];
   var stBy={};
-  if(HIST&&HIST.leagues&&HIST.leagues[L.id]) HIST.leagues[L.id].forEach(function(e){ if(e.st){var a1=NameMatch.matchTeam(e.home,names),a2=NameMatch.matchTeam(e.away,names); if(a1&&a2) stBy[a1+'|'+a2]=e.st;} });
-  (L._xst||[]).forEach(function(x){ stBy[x.h+'|'+x.a]=x.st; });
+  histEntries(L).forEach(function(e){ if(e.st){var a1=NameMatch.matchTeam(e.home,names),a2=NameMatch.matchTeam(e.away,names); if(a1&&a2) stBy[a1+'|'+a2]=e.st;} });
   function add(hn,an,d,t,h,a){ if(!hn||!an) return; var k=hn+'|'+an; if(seen[k]) return; seen[k]=1; out.push({k:k,h:hn,a:an,d:d,t:t,sc:{h:h,a:a,st:'FT'},stt:stBy[k]||null}); }
   L.matches.forEach(function(m){ if(m[4]&&m[4].st==='FT') add(m[2],m[3],m[0],m[1]||'00:00',m[4].h,m[4].a); });
-  if(HIST&&HIST.leagues&&HIST.leagues[L.id]) HIST.leagues[L.id].forEach(function(e){
+  histEntries(L).forEach(function(e){
     var p=romeParts(e.utc); add(NameMatch.matchTeam(e.home,names),NameMatch.matchTeam(e.away,names),p.d,p.t,e.h,e.a);
   });
   var A=ARCH.leagues[L.id]=ARCH.leagues[L.id]||{}, dirty=false;
@@ -1100,6 +1152,13 @@ function parseStatsWeb(js,home,away){
   var g=function(sd,k){return out[sd][k]==null?0:out[sd][k];};
   return {hs:g('home','totalShots'),as:g('away','totalShots'),hst:g('home','shotsOnTarget'),ast:g('away','shotsOnTarget'),hc:g('home','wonCorners'),ac:g('away','wonCorners'),hf:g('home','foulsCommitted'),af:g('away','foulsCommitted'),hy:g('home','yellowCards'),ay:g('away','yellowCards'),hr:g('home','redCards'),ar:g('away','redCards'),hp:out.home.possessionPct==null?null:out.home.possessionPct};
 }
+function parseRosterWeb(js){
+  var out={}; (js.rosters||[]).forEach(function(r){
+    var n=(r.roster||[]).filter(function(x){return x.starter||x.subbedIn;}).map(function(x){return x.athlete&&x.athlete.displayName;}).filter(Boolean);
+    if(r.homeAway==='home'||r.homeAway==='away') out[r.homeAway==='home'?'h':'a']=n;
+  });
+  return out.h&&out.a&&out.h.length>=11&&out.a.length>=11?out:null;
+}
 function advanceRound(L){
   var a=ADV[L.id]||(ADV[L.id]={at:0,run:false,done:''});
   var sig=L.matches.map(function(m){return m[0]+m[2]}).join();
@@ -1115,14 +1174,27 @@ function advanceRound(L){
       var h=c.competitors.filter(function(x){return x.homeAway==='home'})[0], aw=c.competitors.filter(function(x){return x.homeAway==='away'})[0]; if(!h||!aw) return;
       var t=(ev.status&&ev.status.type)||{}, bad=['STATUS_POSTPONED','STATUS_CANCELED','STATUS_CANCELLED','STATUS_SUSPENDED','STATUS_ABANDONED'].indexOf(t.name)>=0; if(bad) return;
       var hn=M({name:h.team.displayName||h.team.name,shortName:h.team.shortDisplayName}), an=M({name:aw.team.displayName||aw.team.name,shortName:aw.team.shortDisplayName}); if(!hn||!an) return;
-      list.push({id:ev.id,utc:ev.date,hn:hn,an:an,hname:h.team.displayName||h.team.name,aname:aw.team.displayName||aw.team.name,fin:t.state==='post',st:t.state,h:numv(h.score),a:numv(aw.score)});
+      var goals=[], reds=[]; (c.details||[]).forEach(function(d){
+        var who=d.athletesInvolved&&d.athletesInvolved[0]&&d.athletesInvolved[0].displayName, sd=d.team&&String(d.team.id)===String(h.team.id)?'h':(d.team&&String(d.team.id)===String(aw.team.id)?'a':null); if(!who||!sd) return;
+        if(d.scoringPlay&&!d.ownGoal&&!d.shootout) goals.push([who,sd]); if(d.redCard) reds.push([who,sd]);
+      });
+      list.push({id:ev.id,utc:ev.date,hn:hn,an:an,hname:h.team.displayName||h.team.name,aname:aw.team.displayName||aw.team.name,hs:h.team.shortDisplayName,as:aw.team.shortDisplayName,fin:t.state==='post',st:t.state,h:numv(h.score),a:numv(aw.score),goals:goals,reds:reds});
     });
     list.sort(function(x,y){return Date.parse(x.utc)-Date.parse(y.utc);});
     // 1) statistiche delle partite finite che la pagina non ha ancora
-    var have={}; ((HIST&&HIST.leagues&&HIST.leagues[L.id])||[]).forEach(function(e){ if(e.st){var x=M(e.home),y=M(e.away); if(x&&y) have[x+'|'+y]=1;} });
-    (L._xst||[]).forEach(function(x){have[x.h+'|'+x.a]=1;});
-    var need=list.filter(function(m){return m.fin&&!have[m.hn+'|'+m.an];}).slice(-30);
-    var sj=need.map(function(m){return espnGet(base+'/summary?event='+m.id).then(function(js){var st=parseStatsWeb(js,m.hname,m.aname); if(st){(L._xst=L._xst||[]).push({h:m.hn,a:m.an,st:st});}}).catch(function(){});});
+    var have={}; histEntries(L).forEach(function(e){ var x=M(e.home),y=M(e.away); if(x&&y&&e.pl&&(e.st||true)) have[x+'|'+y]=e; });
+    var need=list.filter(function(m){var e=have[m.hn+'|'+m.an]; return m.fin&&(!e||!e.pl||!e.st);}).slice(-30);
+    var sj=need.map(function(m){return espnGet(base+'/summary?event='+m.id).then(function(js){
+      var st=parseStatsWeb(js,m.hname,m.aname), pl=parseRosterWeb(js);
+      var arr=CLI[L.id]=CLI[L.id]||[], ex=arr.filter(function(e){return e.home.name===m.hn&&e.away.name===m.an;})[0];
+      if(!ex){ ex={id:m.id,utc:m.utc,home:{name:m.hn,shortName:m.hn},away:{name:m.an,shortName:m.an},h:m.h,a:m.a,g:m.goals,rc:m.reds}; arr.push(ex); }
+      if(st) ex.st=st; if(pl) ex.pl=pl;
+    }).catch(function(){});});
+    // partite finite senza dettagli di summary (es. ESPN non risponde): almeno risultato e marcatori dal tabellone
+    list.filter(function(m){return m.fin;}).forEach(function(m){
+      var inH=histEntries(L).some(function(e){return M(e.home)===m.hn&&M(e.away)===m.an;});
+      if(!inH){ (CLI[L.id]=CLI[L.id]||[]).push({id:m.id,utc:m.utc,home:{name:m.hn,shortName:m.hn},away:{name:m.an,shortName:m.an},h:m.h,a:m.a,g:m.goals,rc:m.reds}); }
+    });
     // 2) giornata successiva: prima serie di partite non finite (stesse regole dello script: squadra che torna o pausa > 3 giorni)
     var groups=[], cur=null, teamsIn=null, last=0;
     list.forEach(function(m){var t=Date.parse(m.utc); if(!cur||teamsIn[m.hn]||teamsIn[m.an]||t-last>3*86400000){cur=[];teamsIn={};groups.push(cur);} cur.push(m); teamsIn[m.hn]=1; teamsIn[m.an]=1; last=t;});
