@@ -108,7 +108,7 @@ def blend(rows,w,logit=False):
     tot=0;n=0
     for r in rows:
         if not(r[5] and r[6] and r[7]): continue
-        pm=r[10]; pb=nv(r)
+        pm=r[9]; pb=nv(r)
         if logit:
             z=[math.exp((1-w)*math.log(max(pm[i],1e-9))+w*math.log(pb[i])) for i in range(3)]; s=sum(z); q=[x/s for x in z]
         else: q=[(1-w)*pm[i]+w*pb[i] for i in range(3)]
