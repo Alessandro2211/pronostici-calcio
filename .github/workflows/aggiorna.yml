@@ -28,6 +28,10 @@ jobs:
         env:
           FORCE_FULL: ${{ github.event_name == 'push' && '1' || '0' }}
         run: node scripts/update.mjs
+      - name: Statistiche e quote da football-data.co.uk
+        env:
+          FORCE_FULL: ${{ github.event_name == 'push' && '1' || '0' }}
+        run: node scripts/fd.mjs || true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

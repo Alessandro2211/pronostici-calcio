@@ -100,26 +100,32 @@ def evaluate(P,seasons):
                 for t,x,gf,ga,sh,sot,shopp,sotopp,yc,rc in ((m['h'],H,m['hg'],m['ag'],m['hs'],m['hst'],m['as_'],m['ast'],m['hy'],m['hr']),(m['a'],A,m['ag'],m['hg'],m['as_'],m['ast'],m['hs'],m['hst'],m['ay'],m['ar'])):
                     x['g']+=1; x['pts']+=3 if gf>ga else (1 if gf==ga else 0); x['gd']+=gf-ga
 
-# ---- Mescolanza modello + quote dei bookmaker ----
-PB=dict(cg=92.8,cp=170,kk=4.41,hfa=107,cs=21,cn=12,cc=24)  # modello con tiri (come in produzione, hfa unico)
-def nv(r):
-    a,b,c=r[5],r[6],r[7]; s=1/a+1/b+1/c; return [1/a/s,1/b/s,1/c/s]
-def blend(rows,w,logit=False):
-    tot=0;n=0
-    for r in rows:
-        if not(r[5] and r[6] and r[7]): continue
-        pm=r[9]; pb=nv(r)
-        if logit:
-            z=[math.exp((1-w)*math.log(max(pm[i],1e-9))+w*math.log(pb[i])) for i in range(3)]; s=sum(z); q=[x/s for x in z]
-        else: q=[(1-w)*pm[i]+w*pb[i] for i in range(3)]
-        tot+=-math.log(max(q[r[8]],1e-9)); n+=1
-    return tot/n,n
-tr=evaluate(PB,TRAIN); te=evaluate(PB,TEST)
-out.append('## Mescolanza con le quote (log-loss, più basso è meglio)')
-for nm,rows in (('allenamento 2022-25',tr),('verifica 2025/26-2026/27',te)):
-    out.append(nm+': '+', '.join('w=%.1f %.4f'%(w,blend(rows,w)[0]) for w in [0,0.2,0.4,0.5,0.6,0.7,0.8,0.9,1.0])+'  (partite con quote: %d)'%blend(rows,0)[1])
-    out.append(nm+' (media geometrica): '+', '.join('w=%.1f %.4f'%(w,blend(rows,w,True)[0]) for w in [0.3,0.5,0.7,0.85]))
-for lg in LG:
-    rows=[x for x in te if x[4]==lg]; out.append('%s verifica: modello %.4f, quote %.4f, 50/50 %.4f, 70/30 %.4f'%(lg,blend(rows,0)[0],blend(rows,1)[0],blend(rows,0.5)[0],blend(rows,0.7)[0]))
-# Over/Under 2.5: il modello, con Poisson, contro quote
+import traceback
+try:
+    # ---- Mescolanza modello + quote dei bookmaker ----
+    PB=dict(cg=92.8,cp=170,kk=4.41,hfa=107,cs=21,cn=12,cc=24)  # modello con tiri (come in produzione, hfa unico)
+    def nv(r):
+        a,b,c=r[5],r[6],r[7]; s=1/a+1/b+1/c; return [1/a/s,1/b/s,1/c/s]
+    def blend(rows,w,logit=False):
+        tot=0;n=0
+        for r in rows:
+            if not(r[5] and r[6] and r[7]): continue
+            pm=r[9]; pb=nv(r)
+            if logit:
+                z=[math.exp((1-w)*math.log(max(pm[i],1e-9))+w*math.log(pb[i])) for i in range(3)]; s=sum(z); q=[x/s for x in z]
+            else: q=[(1-w)*pm[i]+w*pb[i] for i in range(3)]
+            tot+=-math.log(max(q[r[8]],1e-9)); n+=1
+        return tot/n,n
+    tr=evaluate(PB,TRAIN); te=evaluate(PB,TEST)
+    out.append('## Mescolanza con le quote (log-loss, più basso è meglio)')
+    for nm,rows in (('allenamento 2022-25',tr),('verifica 2025/26-2026/27',te)):
+        out.append(nm+': '+', '.join('w=%.1f %.4f'%(w,blend(rows,w)[0]) for w in [0,0.2,0.4,0.5,0.6,0.7,0.8,0.9,1.0])+'  (partite con quote: %d)'%blend(rows,0)[1])
+        out.append(nm+' (media geometrica): '+', '.join('w=%.1f %.4f'%(w,blend(rows,w,True)[0]) for w in [0.3,0.5,0.7,0.85]))
+    for lg in LG:
+        rows=[x for x in te if x[4]==lg]; out.append('%s verifica: modello %.4f, quote %.4f, 50/50 %.4f, 70/30 %.4f'%(lg,blend(rows,0)[0],blend(rows,1)[0],blend(rows,0.5)[0],blend(rows,0.7)[0]))
+    # Over/Under 2.5: il modello, con Poisson, contro quote
+    pass
+
+except Exception:
+    out.append(traceback.format_exc())
 open('analisi-blend.md','w').write('\n'.join(out))
