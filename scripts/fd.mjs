@@ -42,7 +42,7 @@ if (process.env.GITHUB_REPOSITORY) {
 }
 
 const get = async (u) => { const r = await fetch(u, { headers: { 'user-agent': 'Mozilla/5.0 (pronostici-calcio)' } }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); };
-const out = { generatedAt: now.toISOString(), season, bad: [], m: [], o: [] };
+const out = { generatedAt: now.toISOString(), season, bad: [], n: {}, m: [], o: [] };
 const bad = new Set();
 const map = (lg, n) => { const x = NameMatch.matchTeam({ name: n, shortName: n }, names[lg]); if (!x) bad.add(lg + ':' + n); return x; };
 let ok = 0;
@@ -72,7 +72,7 @@ try {
     out.o.push({ lg, d, t: r.Time || null, h, a, o: o1, ou: ou.some((v) => v == null || v <= 1) ? null : ou });
   }
 } catch (e) { console.log('::warning::football-data fixtures: ' + e.message); }
-out.bad = [...bad].sort();
+out.bad = [...bad].sort(); out.n = { m: out.m.length, ostat: out.m.filter((x) => x.o).length, o: out.o.length, next: out.o.map((x) => x.lg + ' ' + x.d).slice(0, 4) };
 if (!ok) { console.log('::warning::football-data non raggiungibile: nessun file scritto'); process.exit(0); }
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(out));

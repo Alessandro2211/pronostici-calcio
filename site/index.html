@@ -460,9 +460,10 @@ function asrMean(L){
   return L._m;
 }
 // Pesi del modello. Verificati sulle stagioni 2022/23-2026/27 (prova a ritroso: ottimizzati su 2022-2025, misurati su 2025/26 e 2026/27).
+// wb: peso delle quote dei bookmaker sul 1X2 (prova a ritroso 2022-2027, 8.600 partite: più peso alle quote = risultati migliori, il modello da solo è peggiore), wo: peso sull'Over/Under 2,5 (non verificato).
 // cg: differenza reti, cp: punti a partita, kk: prudenza sui pochi dati (peso del campionato corrente = g/(g+kk)),
 // cs: tiri in porta, cn: altri tiri, cc: ammonizioni (giallo = 1, rosso = 2). Le sigle con A valgono quando mancano i tiri.
-var MP={wb:0.6,wo:0.5,cg:93,cp:170,kk:6,cs:21,cn:12,cc:24,cgA:165,cpA:212,kkA:9};
+var MP={wb:0.85,wo:0.7,cg:93,cp:170,kk:6,cs:21,cn:12,cc:24,cgA:165,cpA:212,kkA:9};
 var FD=null; // football-data.co.uk: statistiche di partita e quote dei bookmaker (seconda fonte, file data/fd.json)
 var FDX=null;
 function fdIndex(){
