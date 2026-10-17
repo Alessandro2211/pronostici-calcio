@@ -937,6 +937,7 @@ function applyLive(data){
   var summary=[], when=data.generatedAt?new Date(data.generatedAt):null;
   Object.keys(data.leagues||{}).forEach(function(id){
     var L=LEAGUES.filter(function(l){return l.id===id})[0], d=data.leagues[id]; if(!L||!d) return;
+    if(L._adv&&(d.matchday||0)<L.round) return; // la pagina ha già letto da ESPN la giornata dopo: il file di GitHub è più vecchio
     var names=L.teams.map(function(t){return t[0]});
     var M=function(t){return NameMatch.matchTeam(t,names)};
     var rows=(d.standings.total||[]).filter(function(r){return M(r.team)});
@@ -1077,6 +1078,82 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){ try{n
 loadLive();
 setTimeout(loadScores,2500);
 setInterval(loadLive,10*60*1000);
+
+/* ---------- FINE GIORNATA: la pagina passa da sola alla successiva, senza aspettare GitHub ---------- */
+// Quando tutte le partite della giornata mostrata sono finite, la pagina legge da ESPN (se il browser lo permette)
+// le partite appena finite con le loro statistiche e il calendario della giornata dopo, poi ricalcola i pronostici.
+var ADV={};
+function roundOver(L){
+  if(!L.matches.length) return false;
+  return L.matches.every(function(m){return m[4]&&m[4].st==='FT';});
+}
+function espnGet(u){return fetch(u,{cache:'no-store'}).then(function(r){if(!r.ok) throw new Error('HTTP '+r.status); return r.json();});}
+function numv(x){var v=parseFloat(x);return isNaN(v)?null:v;}
+function parseStatsWeb(js,home,away){
+  var teams=(js.boxscore&&js.boxscore.teams)||[], comps=(((js.header||{}).competitions||[])[0]||{}).competitors||[], side={}, out={};
+  comps.forEach(function(c){ if(c.team) side[String(c.team.id)]=c.homeAway; });
+  teams.forEach(function(t){
+    var nm=(t.team&&(t.team.displayName||t.team.name))||'', s=t.homeAway||side[String(t.team&&t.team.id)]||(nm===home?'home':nm===away?'away':null); if(!s) return;
+    var v={}; (t.statistics||[]).forEach(function(x){v[x.name]=numv(x.displayValue!=null?x.displayValue:x.value);}); out[s]=v;
+  });
+  if(!out.home||!out.away||out.home.totalShots==null||out.away.totalShots==null||out.home.shotsOnTarget==null||out.away.shotsOnTarget==null) return null;
+  var g=function(sd,k){return out[sd][k]==null?0:out[sd][k];};
+  return {hs:g('home','totalShots'),as:g('away','totalShots'),hst:g('home','shotsOnTarget'),ast:g('away','shotsOnTarget'),hc:g('home','wonCorners'),ac:g('away','wonCorners'),hf:g('home','foulsCommitted'),af:g('away','foulsCommitted'),hy:g('home','yellowCards'),ay:g('away','yellowCards'),hr:g('home','redCards'),ar:g('away','redCards'),hp:out.home.possessionPct==null?null:out.home.possessionPct};
+}
+function advanceRound(L){
+  var a=ADV[L.id]||(ADV[L.id]={at:0,run:false,done:''});
+  var sig=L.matches.map(function(m){return m[0]+m[2]}).join();
+  if(a.run||Date.now()-a.at<10*60*1000) return;
+  a.run=true; a.at=Date.now();
+  var base='https://site.api.espn.com/apis/site/v2/sports/soccer/'+ESPN_CODE[L.id], names=L.teams.map(function(t){return t[0]}), M=function(t){return NameMatch.matchTeam(t,names)};
+  var jobs=[]; for(var d=-4;d<=10;d++) (function(d){jobs.push(espnGet(base+'/scoreboard?dates='+espnDay(d)).then(function(j){return j.events||[];}).catch(function(){return null;}));})(d);
+  Promise.all(jobs).then(function(res){
+    if(res.filter(function(x){return x===null}).length>3) throw new Error('ESPN');
+    var evs=[]; res.forEach(function(r){(r||[]).forEach(function(ev){evs.push(ev);});});
+    var list=[]; evs.forEach(function(ev){
+      var c=ev.competitions&&ev.competitions[0]; if(!c) return;
+      var h=c.competitors.filter(function(x){return x.homeAway==='home'})[0], aw=c.competitors.filter(function(x){return x.homeAway==='away'})[0]; if(!h||!aw) return;
+      var t=(ev.status&&ev.status.type)||{}, bad=['STATUS_POSTPONED','STATUS_CANCELED','STATUS_CANCELLED','STATUS_SUSPENDED','STATUS_ABANDONED'].indexOf(t.name)>=0; if(bad) return;
+      var hn=M({name:h.team.displayName||h.team.name,shortName:h.team.shortDisplayName}), an=M({name:aw.team.displayName||aw.team.name,shortName:aw.team.shortDisplayName}); if(!hn||!an) return;
+      list.push({id:ev.id,utc:ev.date,hn:hn,an:an,hname:h.team.displayName||h.team.name,aname:aw.team.displayName||aw.team.name,fin:t.state==='post',st:t.state,h:numv(h.score),a:numv(aw.score)});
+    });
+    list.sort(function(x,y){return Date.parse(x.utc)-Date.parse(y.utc);});
+    // 1) statistiche delle partite finite che la pagina non ha ancora
+    var have={}; ((HIST&&HIST.leagues&&HIST.leagues[L.id])||[]).forEach(function(e){ if(e.st){var x=M(e.home),y=M(e.away); if(x&&y) have[x+'|'+y]=1;} });
+    (L._xst||[]).forEach(function(x){have[x.h+'|'+x.a]=1;});
+    var need=list.filter(function(m){return m.fin&&!have[m.hn+'|'+m.an];}).slice(-30);
+    var sj=need.map(function(m){return espnGet(base+'/summary?event='+m.id).then(function(js){var st=parseStatsWeb(js,m.hname,m.aname); if(st){(L._xst=L._xst||[]).push({h:m.hn,a:m.an,st:st});}}).catch(function(){});});
+    // 2) giornata successiva: prima serie di partite non finite (stesse regole dello script: squadra che torna o pausa > 3 giorni)
+    var groups=[], cur=null, teamsIn=null, last=0;
+    list.forEach(function(m){var t=Date.parse(m.utc); if(!cur||teamsIn[m.hn]||teamsIn[m.an]||t-last>3*86400000){cur=[];teamsIn={};groups.push(cur);} cur.push(m); teamsIn[m.hn]=1; teamsIn[m.an]=1; last=t;});
+    var minSize=Math.max(2,Math.ceil(names.length/4)), next=null;
+    for(var i=0;i<groups.length;i++){ if(groups[i].length>=minSize&&groups[i].some(function(m){return !m.fin;})){next=groups[i];break;} }
+    var standP=espnGet('https://site.api.espn.com/apis/v2/sports/soccer/'+ESPN_CODE[L.id]+'/standings').catch(function(){return null;});
+    return Promise.all(sj.concat([standP])).then(function(r){
+      var sj2=r[r.length-1], changed=false, fresh=false;
+      if(sj2){ // classifica aggiornata: stesse voci dello script
+        var ent=(sj2.children&&sj2.children[0]&&sj2.children[0].standings&&sj2.children[0].standings.entries)||[], ok=0;
+        ent.forEach(function(e){
+          var n=e.team&&M({name:e.team.displayName||e.team.name,shortName:e.team.shortDisplayName}), t=n&&L.teams.filter(function(x){return x[0]===n})[0]; if(!t) return;
+          var st=function(k){var o=(e.stats||[]).filter(function(x){return x.name===k})[0]; return o&&o.value!=null?+o.value:null;};
+          var pl=st('gamesPlayed'), pt=st('points'); if(pl==null||pt==null) return;
+          t[2]=pt; t[3]=pl; t[4]=st('pointDifferential'); t[5]=st('rank')||t[5]; t[6]=st('pointsFor'); t[7]=null; ok++;
+        });
+        if(ok>=names.length*0.7){ changed=true; fresh=true; }
+      }
+      if(next){
+        var mx=0; L.teams.forEach(function(t){if(t[3]>mx) mx=t[3];});
+        L.matches=next.map(function(m){var p=romeParts(m.utc); return [p.d,(m.utc.indexOf('T00:00')>0?null:p.t),m.hn,m.an,m.fin||m.st==='in'?scoreObj(m.fin?'FINISHED':'IN_PLAY',{h:m.h,a:m.a}):null];}).sort(function(x,y){return (x[0]+(x[1]||'')).localeCompare(y[0]+(y[1]||''));});
+        if(fresh&&mx+1>L.round){ L.round=mx+1; L.played=mx; } else { L.round=L.round+1; L.played=L.round-1; }
+        var f=new Date(L.matches[0][0]+'T12:00:00'), l=new Date(L.matches[L.matches.length-1][0]+'T12:00:00'), mo=function(x){return x.toLocaleDateString('it-IT',{month:'short'})};
+        L.dates=(f.getDate()===l.getDate()&&f.getMonth()===l.getMonth())?(f.getDate()+' '+mo(f)):(f.getMonth()===l.getMonth()?f.getDate()+'–'+l.getDate()+' '+mo(l):f.getDate()+' '+mo(f)+' – '+l.getDate()+' '+mo(l));
+        L._adv=true; changed=true;
+      }
+      rebuildStats(L); render();
+    });
+  }).catch(function(){}).then(function(){a.run=false;});
+}
+function checkRoundEnds(){ if(typeof fetch!=='function'||location.protocol==='file:') return; LEAGUES.forEach(function(L){ if(roundOver(L)) advanceRound(L); }); }
 function matchesActive(){
   var now=romeParts(new Date().toISOString()), nm=parseInt(now.t.slice(0,2),10)*60+parseInt(now.t.slice(3),10);
   return LEAGUES.some(function(L){return L.matches.some(function(m){
@@ -1088,7 +1165,7 @@ function matchesActive(){
   });});
 }
 function tickScores(){
-  if(!document.hidden){ if(matchesActive()&&Date.now()-WEB.last>=30000) pollEspnWeb(); loadScores(); }
+  if(!document.hidden){ if(matchesActive()&&Date.now()-WEB.last>=30000) pollEspnWeb(); loadScores(); checkRoundEnds(); }
   setTimeout(tickScores,matchesActive()?10000:60000);
 }
 setTimeout(tickScores,5000);
