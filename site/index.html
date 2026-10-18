@@ -923,27 +923,21 @@ function slipHTML(L){
    +'<div class="slipsum"><p>Tutte le singole giuste: <b>'+fmtP(cs)+'</b></p><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p></div>'
    +'<p class="tsub" style="margin:0">Stime statistiche, non garantiscono nessun esito. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
 }
-/* ---------- SCHEDINA MISTA: le scelte più sicure di tutti i campionati ---------- */
-// Cinque doppie e cinque Over 1,5 con la probabilità più alta, prese da campionati diversi tra le partite non ancora iniziate.
+/* ---------- SCHEDINA MISTA: le doppie più sicure di tutti i campionati ---------- */
+// Le cinque doppie chance con la probabilità più alta tra le partite non ancora iniziate di tutti i campionati.
 function mixSlipHTML(){
   var pool=[]; LEAGUES.forEach(function(L){ L.matches.forEach(function(m){
-    if(m[4]) return; var p=predict(L,m[2],m[3],m[0]); pool.push({L:L,m:m,p:p,o15:p.ou[0].over});
+    if(m[4]) return; pool.push({L:L,m:m,p:predict(L,m[2],m[3],m[0])});
   });});
-  var N=5, used={}, dbl=pool.slice().sort(function(a,b){return b.p.pdbl-a.p.pdbl}).slice(0,N);
-  dbl.forEach(function(x){used[x.L.id+x.m[2]+x.m[3]]=1;});
-  var ov=pool.filter(function(x){return !used[x.L.id+x.m[2]+x.m[3]]}).sort(function(a,b){return b.o15-a.o15}).slice(0,N);
-  function row(x,kind){
-    var pk=kind==='d'?'<span class="pick d">'+x.p.dbl+'</span> <span class="tsub">'+pct(x.p.pdbl)+'%</span>':'<span class="pick ou">Over 1,5</span> <span class="tsub">'+pct(x.o15)+'%</span>';
-    return '<tr><td><b>'+x.m[2]+'</b> – <b>'+x.m[3]+'</b><div class="tsub">'+x.L.name+' · '+slipWhen(x.m)+'</div></td><td>'+pk+(x.p.book?' <span class="tsub" title="con le quote dei bookmaker">•</span>':'')+'</td></tr>';
-  }
-  var cd=dbl.reduce(function(a,x){return a*x.p.pdbl},1), co=ov.reduce(function(a,x){return a*x.o15},1);
-  if(!pool.length) return '<div class="shead"><div><span class="kicker">Schedina mista</span><h3 id="slipTitle">Tutti i campionati</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div><div class="empty">Non ci sono partite ancora da giocare nelle giornate caricate.</div>';
-  return '<div class="shead"><div><span class="kicker">Schedina mista · squadre di campionati diversi</span><h3 id="slipTitle">Le più sicure</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div>'
-   +'<div class="tw"><table class="slip"><thead><tr><th>Partita</th><th>Scelta</th></tr></thead><tbody>'
-   +'<tr><td colspan="2" class="tsub"><b>Doppia chance con la probabilità più alta</b></td></tr>'+dbl.map(function(x){return row(x,'d')}).join('')
-   +'<tr><td colspan="2" class="tsub"><b>Over 1,5 con la probabilità più alta</b></td></tr>'+ov.map(function(x){return row(x,'o')}).join('')
-   +'</tbody></table></div>'
-   +'<div class="slipsum"><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p><p>Tutti gli Over giusti: <b>'+fmtP(co)+'</b></p><p>Tutte le dieci giuste: <b>'+fmtP(cd*co)+'</b></p></div>'
+  var N=5, dbl=pool.sort(function(a,b){return b.p.pdbl-a.p.pdbl}).slice(0,N);
+  var head='<div class="shead"><div><span class="kicker">Schedina mista · squadre di campionati diversi</span><h3 id="slipTitle">Le doppie più sicure</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div>';
+  if(!dbl.length) return head+'<div class="empty">Non ci sono partite ancora da giocare nelle giornate caricate.</div>';
+  var cd=dbl.reduce(function(a,x){return a*x.p.pdbl},1);
+  var rows=dbl.map(function(x){
+    return '<tr><td><b>'+x.m[2]+'</b> – <b>'+x.m[3]+'</b><div class="tsub">'+x.L.name+' · '+slipWhen(x.m)+'</div></td><td><span class="pick d">'+x.p.dbl+'</span> <span class="tsub">'+pct(x.p.pdbl)+'%</span>'+(x.p.book?' <span class="tsub" title="con le quote dei bookmaker">•</span>':'')+'</td></tr>';
+  }).join('');
+  return head+'<div class="tw"><table class="slip"><thead><tr><th>Partita</th><th>Doppia</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+   +'<div class="slipsum"><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p></div>'
    +'<p class="tsub" style="margin:0">I punti (•) indicano le partite con quote dei bookmaker nel calcolo. Probabilità stimate, non garantiscono nessun esito; più partite si uniscono, più scende la probabilità che vadano tutte bene. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
 }
 var slipId=null;

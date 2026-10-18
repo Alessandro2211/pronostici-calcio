@@ -76,4 +76,4 @@ Il tabellone ESPN di ogni partita contiene gol (con marcatore) ed espulsioni; il
 
 ## Schedina mista
 
-Il pulsante «Schedina mista» (accanto a «Schedina» in ogni campionato) raccoglie, tra le partite non ancora iniziate di tutti i campionati, le 5 doppie chance e i 5 Over 1,5 con la probabilità più alta, senza ripetere la stessa partita. Mostra la probabilità che siano tutte giuste (calcolata come se le partite fossero indipendenti).
+Il pulsante «Schedina mista» (accanto a «Schedina» in ogni campionato) raccoglie, tra le partite non ancora iniziate di tutti i campionati, le 5 doppie chance con la probabilità più alta. Mostra la probabilità che siano tutte giuste (calcolata come se le partite fossero indipendenti).
