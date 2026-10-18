@@ -74,6 +74,6 @@ Il tabellone ESPN di ogni partita contiene gol (con marcatore) ed espulsioni; il
 
 `scripts/fd.mjs` legge i file CSV gratuiti di football-data.co.uk (nessuna chiave) e scrive `data/fd.json`: tiri, tiri in porta, falli, corner, cartellini e quote medie dei bookmaker (1X2, Over/Under 2,5) per i sette campionati, comprese le partite della prossima giornata (`fixtures.csv`). I nomi delle squadre sono abbinati con gli stessi alias del resto del sito. La pagina usa queste statistiche per le partite che ESPN non copre, e le quote nel pronostico: 85% quote e 15% modello sul 1X2 (prova a ritroso su 8.600 partite 2022–2027: log-loss modello 0,9925, quote 0,9743, mescolanza 85/15 circa 0,975), 70/30 sull'Over/Under 2,5 (non verificato). Il file si aggiorna di solito con un giorno di ritardo; senza quote vale il solo modello.
 
-## Schedina mista
+## Campionato «Miste»
 
-Il pulsante «Schedina mista» (accanto a «Schedina» in ogni campionato) raccoglie, tra le partite non ancora iniziate di tutti i campionati, le 5 doppie chance con la probabilità più alta. Mostra la probabilità che siano tutte giuste (calcolata come se le partite fossero indipendenti).
+Accanto ai sette campionati c'è un ottavo riquadro, «Miste»: le 10 partite non ancora iniziate, di qualunque campionato, con la doppia chance più probabile, mostrate come le partite di un campionato (schede complete, raggruppate per giorno, con il campionato sopra ogni scheda). La nota in alto indica la probabilità che le dieci doppie siano tutte giuste, calcolata come se fossero indipendenti.

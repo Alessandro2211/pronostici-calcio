@@ -630,7 +630,19 @@ function hue(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;
 function abbr(n){var w=n.replace(/[^A-Za-zÀ-ÿ. ]/g,'').split(' ').filter(Boolean);return (w.length>1?w[0][0]+w[1][0]:n.slice(0,3)).toUpperCase()}
 function mono(n){return '<span class="mono" style="--h:'+hue(n)+'" aria-hidden="true">'+abbr(n)+'</span>'}
 function fmtDay(d){if(d==='W')return 'Weekend 9–11 ottobre · orari da definire';return new Date(d+'T12:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}
-function cur(){return LEAGUES.filter(function(l){return l.id===state.league})[0]}
+/* ---------- CAMPIONATO "MISTE": le 10 doppie più sicure di tutti i campionati ---------- */
+// Si presenta come un campionato in più: le dieci partite non ancora iniziate, di qualunque campionato, con la doppia chance più probabile.
+function mixLeague(){
+  var pool=[]; LEAGUES.forEach(function(L){ L.matches.forEach(function(m){ if(m[4]) return; pool.push({L:L,m:m,pd:predict(L,m[2],m[3],m[0]).pdbl}); }); });
+  var top=pool.sort(function(a,b){return b.pd-a.pd}).slice(0,10);
+  var all=top.reduce(function(a,x){return a*x.pd},1);
+  top.sort(function(a,b){return (a.m[0]+(a.m[1]||'')).localeCompare(b.m[0]+(b.m[1]||''));});
+  var ms=top.map(function(x){return x.m;});
+  var dates=ms.length?(ms[0][0].slice(8)+'/'+ms[0][0].slice(5,7)+(ms[0][0]!==ms[ms.length-1][0]?' – '+ms[ms.length-1][0].slice(8)+'/'+ms[ms.length-1][0].slice(5,7):'')):'';
+  return {id:'mix',name:'Miste',country:'Squadre di tutti i campionati',round:0,dates:dates,items:top,matches:ms,teams:[],
+    note:ms.length?'Le 10 doppie chance più probabili tra le partite non ancora iniziate di tutti i campionati. Probabilità che siano tutte giuste: '+fmtP(all)+' (stima, partite considerate indipendenti).':'Non ci sono partite ancora da giocare nelle giornate caricate.'};
+}
+function cur(){ if(state.league==='mix') return mixLeague(); return LEAGUES.filter(function(l){return l.id===state.league})[0]}
 function f1(x){return x.toFixed(1)}
 
 var FLAGS={
@@ -640,6 +652,7 @@ var FLAGS={
  bundesliga:'<rect width="30" height="20" fill="#000"/><rect y="6.67" width="30" height="6.67" fill="#DD0000"/><rect y="13.33" width="30" height="6.67" fill="#FFCE00"/>',
  ligue1:'<rect width="30" height="20" fill="#fff"/><rect width="10" height="20" fill="#0055A4"/><rect x="20" width="10" height="20" fill="#EF4135"/>',
  eredivisie:'<rect width="30" height="20" fill="#fff"/><rect width="30" height="6.67" fill="#AE1C28"/><rect y="13.33" width="30" height="6.67" fill="#21468B"/>',
+ mix:'<rect width="30" height="20" fill="#009246"/><rect x="4.3" width="4.3" height="20" fill="#fff"/><rect x="8.6" width="4.3" height="20" fill="#CE1124"/><rect x="12.9" width="4.3" height="20" fill="#FFCE00"/><rect x="17.2" width="4.3" height="20" fill="#0055A4"/><rect x="21.5" width="4.3" height="20" fill="#AE1C28"/><rect x="25.8" width="4.2" height="20" fill="#006600"/>',
  primeira:'<rect width="30" height="20" fill="#FF0000"/><rect width="12" height="20" fill="#006600"/><circle cx="12" cy="10" r="3.6" fill="#FFE000"/><circle cx="12" cy="10" r="2" fill="#FF0000"/><circle cx="12" cy="10" r="1" fill="#fff"/>'
 };
 function flag(id){return '<svg viewBox="0 0 30 20" preserveAspectRatio="none" aria-hidden="true" focusable="false">'+(FLAGS[id]||'')+'</svg>';}
@@ -674,7 +687,7 @@ function renderTiles(){
     var sub=l.matches.length?('Giornata '+l.round+' · '+l.matches.length+' partite'):'Calendario da caricare';
     var nl=l.matches.filter(function(m){return m[4]&&m[4].st!=='FT'}).length;
     return '<button class="tile" data-id="'+l.id+'" aria-pressed="'+(l.id===state.league)+'"><span class="emblem" data-lg="'+l.id+'" aria-hidden="true">'+flag(l.id)+'</span><span class="tt"><b>'+l.name+'</b><small>'+sub+'</small>'+(nl?'<small class="lv">● '+nl+' in diretta</small>':'')+'</span></button>';
-  }).join('');
+  }).join('')+(function(){var M=mixLeague(); return '<button class="tile" data-id="mix" aria-pressed="'+(state.league==='mix')+'"><span class="emblem" data-lg="mix" aria-hidden="true">'+flag('mix')+'</span><span class="tt"><b>Miste</b><small>'+(M.matches.length?M.matches.length+' doppie più sicure':'Nessuna partita')+'</small></span></button>';})();
 }
 
 function teamLine(L,n){
@@ -738,6 +751,11 @@ function matchHTML(L,m){
 }
 
 function partiteHTML(L){
+  if(L.id==='mix'){
+    if(!L.items.length) return '<div class="empty">Non ci sono partite ancora da giocare nelle giornate caricate.</div>';
+    var dd={}, ord=[]; L.items.forEach(function(x){ if(!dd[x.m[0]]){dd[x.m[0]]=[];ord.push(x.m[0]);} dd[x.m[0]].push(x); });
+    return ord.map(function(d){ return '<div class="day">'+fmtDay(d)+'</div><div class="list">'+dd[d].map(function(x){return '<div><div class="tsub" style="margin:0 4px 4px"><b>'+x.L.name+'</b></div>'+matchHTML(x.L,x.m)+'</div>';}).join('')+'</div>'; }).join('');
+  }
   if(!L.matches.length) return '<div class="empty">Le partite di questo campionato non sono ancora state caricate. Dimmi quali dati usare e le aggiungo.</div>';
   var days={}, order=[];
   L.matches.forEach(function(m){ if(!days[m[0]]){days[m[0]]=[];order.push(m[0]);} days[m[0]].push(m); });
@@ -923,26 +941,8 @@ function slipHTML(L){
    +'<div class="slipsum"><p>Tutte le singole giuste: <b>'+fmtP(cs)+'</b></p><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p></div>'
    +'<p class="tsub" style="margin:0">Stime statistiche, non garantiscono nessun esito. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
 }
-/* ---------- SCHEDINA MISTA: le doppie più sicure di tutti i campionati ---------- */
-// Le cinque doppie chance con la probabilità più alta tra le partite non ancora iniziate di tutti i campionati.
-function mixSlipHTML(){
-  var pool=[]; LEAGUES.forEach(function(L){ L.matches.forEach(function(m){
-    if(m[4]) return; pool.push({L:L,m:m,p:predict(L,m[2],m[3],m[0])});
-  });});
-  var N=5, dbl=pool.sort(function(a,b){return b.p.pdbl-a.p.pdbl}).slice(0,N);
-  var head='<div class="shead"><div><span class="kicker">Schedina mista · squadre di campionati diversi</span><h3 id="slipTitle">Le doppie più sicure</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div>';
-  if(!dbl.length) return head+'<div class="empty">Non ci sono partite ancora da giocare nelle giornate caricate.</div>';
-  var cd=dbl.reduce(function(a,x){return a*x.p.pdbl},1);
-  var rows=dbl.map(function(x){
-    return '<tr><td><b>'+x.m[2]+'</b> – <b>'+x.m[3]+'</b><div class="tsub">'+x.L.name+' · '+slipWhen(x.m)+'</div></td><td><span class="pick d">'+x.p.dbl+'</span> <span class="tsub">'+pct(x.p.pdbl)+'%</span>'+(x.p.book?' <span class="tsub" title="con le quote dei bookmaker">•</span>':'')+'</td></tr>';
-  }).join('');
-  return head+'<div class="tw"><table class="slip"><thead><tr><th>Partita</th><th>Doppia</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
-   +'<div class="slipsum"><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p></div>'
-   +'<p class="tsub" style="margin:0">I punti (•) indicano le partite con quote dei bookmaker nel calcolo. Probabilità stimate, non garantiscono nessun esito; più partite si uniscono, più scende la probabilità che vadano tutte bene. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
-}
 var slipId=null;
 function openSlip(id){
-  if(id==='mix'){ slipId='mix'; $('slipbox').innerHTML=mixSlipHTML(); $('slip').hidden=false; var c0=$('slipClose'); if(c0) c0.focus(); return; }
   slipId=id; var L=LEAGUES.filter(function(l){return l.id===id})[0]; if(!L||!L.matches.length) return;
   $('slipbox').innerHTML=slipHTML(L); $('slip').hidden=false;
   var c=$('slipClose'); if(c) c.focus();
@@ -960,9 +960,11 @@ function metodoHTML(){
 
 function renderPanel(){
   var L=cur();
-  var tabs=[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']];
-  var rounds='<button class="rbtn" aria-pressed="true">Giornata '+L.round+' · '+L.dates+'</button>'
-    +'<button class="rbtn" disabled title="Non ancora caricata">Giornata '+(L.round+1)+'</button>'+'<button class="rbtn" data-slip="'+L.id+'">Schedina</button><button class="rbtn" data-slip="mix">Schedina mista</button>';
+  var tabs=L.id==='mix'?[['partite','Partite'],['metodo','Metodo']]:[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']];
+  if(L.id==='mix'&&state.tab!=='metodo') state.tab='partite';
+  var rounds=L.id==='mix'?'<button class="rbtn" aria-pressed="true">Prossime partite · '+L.dates+'</button>'
+    :'<button class="rbtn" aria-pressed="true">Giornata '+L.round+' · '+L.dates+'</button>'
+    +'<button class="rbtn" disabled title="Non ancora caricata">Giornata '+(L.round+1)+'</button>'+'<button class="rbtn" data-slip="'+L.id+'">Schedina</button>';
   var body = state.tab==='partite'?partiteHTML(L):state.tab==='giocate'?giocateHTML(L):state.tab==='classifica'?classificaHTML(L):state.tab==='marcatori'?marcatoriHTML(L):state.tab==='voti'?votiHTML(L):metodoHTML();
   $('panel').innerHTML=
     '<div class="phead"><div class="ptitle"><span class="emblem" data-lg="'+L.id+'" aria-hidden="true">'+flag(L.id)+'</span><div><h2>'+L.name+'</h2><span>'+L.country+'</span></div></div>'
@@ -1005,7 +1007,7 @@ document.addEventListener('click',function(e){
   else if(e.target.closest('[data-gr]')){ state.gr=e.target.closest('[data-gr]').getAttribute('data-gr'); renderPanel(); }
 });
 
-try{ var hh=(location.hash||'').slice(1); if(LEAGUES.some(function(l){return l.id===hh})) state.league=hh; }catch(_){}
+try{ var hh=(location.hash||'').slice(1); if(hh==='mix'||LEAGUES.some(function(l){return l.id===hh})) state.league=hh; }catch(_){}
 applyTheme(); $('gear').innerHTML=gearSVG();
 render();
 
@@ -1032,7 +1034,7 @@ function applyScores(live){
       if(so.st==='FT'&&!(m[4]&&m[4].st==='FT')){ JUST[hn+'|'+an]=Date.now(); ended=true; }
       m[4]=so;changed=true;} });
   });
-  if(changed){ if(ended) loadHistory(); render(); if(slipId&&!$('slip').hidden){ if(slipId==='mix') $('slipbox').innerHTML=mixSlipHTML(); else {var L2=LEAGUES.filter(function(l){return l.id===slipId})[0]; if(L2) $('slipbox').innerHTML=slipHTML(L2);} } }
+  if(changed){ if(ended) loadHistory(); render(); if(slipId&&!$('slip').hidden){var L2=LEAGUES.filter(function(l){return l.id===slipId})[0]; if(L2) $('slipbox').innerHTML=slipHTML(L2);} }
 }
 function applyLive(data){
   var summary=[], when=data.generatedAt?new Date(data.generatedAt):null;
