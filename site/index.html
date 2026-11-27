@@ -293,11 +293,53 @@ footer{padding-inline:6px}
 .lnm{display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:.78rem;color:var(--bad);font-weight:700;white-space:nowrap}
 @media (max-width:560px){.lnrow{grid-template-columns:26px minmax(0,1fr) auto minmax(0,1fr)}.lnm{grid-column:2/-1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 8px}}
 @media (prefers-reduced-motion:reduce){.lnhead h2::before{animation:none}}
+
+/* ---------- simulazione schedine ---------- */
+.hbtns{display:flex;gap:10px;align-items:center}
+.gear{position:relative}
+.badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:.72rem;font-weight:800;display:grid;place-items:center;padding:0 5px}
+.badge[hidden]{display:none}
+.play{display:flex;flex-direction:column;gap:12px;background:var(--surface2);border-radius:26px;padding:16px}
+.play h4{margin:0;font-family:var(--f-display);font-size:1.2rem}
+.legs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.leg label{display:flex;gap:10px;align-items:center;background:var(--surface);border-radius:20px;padding:10px 14px;cursor:pointer}
+.leg.lock label{opacity:.55;cursor:default}
+.leg input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.leg .lt{flex:1;min-width:0;display:flex;flex-direction:column;font-size:.9rem;line-height:1.25}
+.leg .lt small{color:var(--muted);font-size:.74rem}
+.leg .lp{display:flex;flex-direction:column;align-items:flex-end;font-size:.74rem;color:var(--muted);white-space:nowrap}
+.leg .lp b{font-family:var(--f-display);font-size:1.1rem;color:var(--ink)}
+.stakerow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.eurbox{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border-radius:999px;padding:6px 16px;font-weight:700}
+.eurbox input{width:5.5em;border:0;background:none;font:inherit;font-weight:800;font-size:1.1rem;color:var(--ink);outline:none;-moz-appearance:textfield}
+.eurbox input::-webkit-outer-spin-button,.eurbox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.playsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.playsum div{background:var(--surface);border-radius:20px;padding:10px 12px;min-width:0}
+.playsum span{display:block;font-size:.7rem;color:var(--muted);font-weight:600}
+.playsum b{font-family:var(--f-display);font-size:1.1rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.bigbtn{border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:1rem;padding:15px 20px}
+.bigbtn[disabled]{opacity:.45;cursor:not-allowed}
+.pmsg:empty{display:none}
+.pdone{margin:0;background:var(--surface);border-radius:20px;padding:10px 14px;color:var(--good);font-weight:700;font-size:.88rem}
+.pdone .rbtn{margin-top:6px}
+.tkl{display:flex;flex-direction:column;gap:12px}
+.tk{background:var(--surface);box-shadow:var(--shadow);border-radius:26px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.tk.won{box-shadow:inset 0 0 0 2px var(--good)}
+.tk.lost{box-shadow:inset 0 0 0 2px var(--bad)}
+.tkhead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.tkpill{flex:none;font-size:.74rem;font-weight:800;border-radius:999px;padding:3px 11px;box-shadow:inset 0 0 0 1.5px currentColor}
+.tkpill.open{color:var(--accent-text)}.tkpill.won{color:var(--good)}.tkpill.lost{color:var(--bad)}
+.tkleg{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:.88rem;padding:8px 0;border-top:1px solid var(--line)}
+.tkr{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.tkfoot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;border-top:1px solid var(--line);padding-top:10px;font-size:.88rem}
+.simact{display:flex;gap:8px;flex-wrap:wrap}
+.play .seg{flex-wrap:nowrap;align-self:stretch}.play .seg button{flex:1;padding:9px 8px;white-space:nowrap}
+@media (max-width:420px){.playsum{grid-template-columns:1fr 1fr}.playsum div:last-child{grid-column:1/-1}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="top"><h1>Pronostici Calcio Europa</h1><button class="gear" id="gear" type="button" aria-label="Impostazioni" aria-haspopup="dialog"></button></header>
+  <header class="top"><h1>Pronostici Calcio Europa</h1><div class="hbtns"><button class="gear" id="simbtn" type="button" aria-label="Le mie schedine" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2.5a2.5 2.5 0 0 0 0 5V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 5.5v13" stroke-dasharray="2 2.4"/></svg><span class="badge" id="simbadge" hidden>0</span></button><button class="gear" id="gear" type="button" aria-label="Impostazioni" aria-haspopup="dialog"></button></div></header>
   <section class="livenow" id="livenow" hidden aria-live="polite"></section>
   <nav class="tiles" id="tiles" aria-label="Campionati"></nav>
   <section class="panel" id="panel" aria-live="polite"></section>
@@ -305,6 +347,7 @@ footer{padding-inline:6px}
 </div>
 
 <div class="overlay" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle"><div class="slipbox plain" id="setbox"></div></div>
+<div class="overlay" id="sim" hidden role="dialog" aria-modal="true" aria-labelledby="simTitle"><div class="slipbox plain" id="simbox"></div></div>
 <div class="overlay" id="slip" hidden role="dialog" aria-modal="true" aria-labelledby="slipTitle"><div class="slipbox" id="slipbox"></div></div>
 <script src="names.js"></script>
 <script>
@@ -978,15 +1021,17 @@ function slipHTML(L){
    +'<div class="tw"><table class="slip"><thead><tr><th>Partita</th><th>Singola</th><th>Doppia</th><th>Gol</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
    +roundSummary(L)
    +'<div class="slipsum"><p>Tutte le singole giuste: <b>'+fmtP(cs)+'</b></p><p>Tutte le doppie giuste: <b>'+fmtP(cd)+'</b></p></div>'
+   +'<div id="playbox">'+(PLAY.src=L.id,playHTML())+'</div>'
    +'<p class="tsub" style="margin:0">Stime statistiche, non garantiscono nessun esito. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
 }
 var slipId=null;
 function openSlip(id){
-  slipId=id; var L=LEAGUES.filter(function(l){return l.id===id})[0]; if(!L||!L.matches.length) return;
-  $('slipbox').innerHTML=slipHTML(L); $('slip').hidden=false;
+  var L=id==='mix'?mixLeague():LEAGUES.filter(function(l){return l.id===id})[0]; if(!L||!L.matches.length) return;
+  slipId=id; if(PLAY.opened!==id){PLAY.opened=id;PLAY.off={};PLAY.msg='';PLAY.market=(id==='mix'?'d':'s');}
+  $('slipbox').innerHTML=id==='mix'?mixSlipHTML():slipHTML(L); $('slip').hidden=false; updateSummary();
   var c=$('slipClose'); if(c) c.focus();
 }
-function closeSlip(){$('slip').hidden=true;slipId=null;}
+function closeSlip(){$('slip').hidden=true;slipId=null;PLAY.opened=null;}
 
 function metodoHTML(){
   return '<div class="method"><p>Ogni partita ha una forza per squadra e due medie gol, una per la casa e una per la trasferta. Da lì il modello calcola la probabilità di ogni punteggio e le somma in 1, X e 2.</p>'
@@ -1002,7 +1047,7 @@ function renderPanel(){
   var tabs=L.id==='mix'?[['partite','Partite'],['metodo','Metodo']]:(L.uefa?[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['metodo','Metodo']]:[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']]);
   if(L.uefa&&state.tab==='voti') state.tab='partite';
   if(L.id==='mix'&&state.tab!=='metodo') state.tab='partite';
-  var rounds=L.id==='mix'?'<button class="rbtn" aria-pressed="true">Prossime partite · '+L.dates+'</button>'
+  var rounds=L.id==='mix'?'<button class="rbtn" aria-pressed="true">Prossime partite · '+L.dates+'</button><button class="rbtn" data-slip="mix">Gioca le Miste</button>'
     :'<button class="rbtn" aria-pressed="true">Giornata '+L.round+' · '+L.dates+'</button>'
     +'<button class="rbtn" disabled title="Non ancora caricata">Giornata '+(L.round+1)+'</button>'+'<button class="rbtn" data-slip="'+L.id+'">Schedina</button>';
   var body = state.tab==='partite'?partiteHTML(L):state.tab==='giocate'?giocateHTML(L):state.tab==='classifica'?classificaHTML(L):state.tab==='marcatori'?marcatoriHTML(L):state.tab==='voti'?votiHTML(L):metodoHTML();
@@ -1014,7 +1059,7 @@ function renderPanel(){
     +'<div>'+body+'</div>';
 }
 
-function render(){ renderTiles(); renderPanel(); renderLiveNow(); }
+function render(){ renderTiles(); renderPanel(); renderLiveNow(); if(typeof afterData==='function'&&typeof SIM!=='undefined') afterData(); }
 
 var hold={t:null,el:null,x:0,y:0,suppress:false};
 function cancelHold(){if(hold.t){clearTimeout(hold.t);hold.t=null;} if(hold.el){hold.el.classList.remove('hold');hold.el=null;}}
@@ -1031,7 +1076,7 @@ document.addEventListener('pointermove',function(e){if(hold.t&&Math.abs(e.client
 ['pointerup','pointercancel','dragstart'].forEach(function(n){document.addEventListener(n,cancelHold);});
 document.addEventListener('scroll',cancelHold,true);
 document.addEventListener('contextmenu',function(e){if(e.target.closest&&e.target.closest('.emblem')) e.preventDefault();});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSlip();closeSettings();}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSlip();closeSettings();closeSim();}});
 document.addEventListener('click',function(e){
   if(e.target.closest('#gear')){openSettings();return;}
   var o=e.target.closest('[data-pref]'); if(o){setPref(o.getAttribute('data-pref'),o.getAttribute('data-val'));return;}
@@ -1045,6 +1090,185 @@ document.addEventListener('click',function(e){
   if(tile){ state.league=tile.getAttribute('data-id'); state.tab='partite'; render(); try{history.replaceState(null,'','#'+state.league)}catch(_){} }
   else if(tab){ state.tab=tab.getAttribute('data-tab'); renderPanel(); }
   else if(e.target.closest('[data-gr]')){ state.gr=e.target.closest('[data-gr]').getAttribute('data-gr'); renderPanel(); }
+});
+
+/* ---------- SIMULAZIONE SCHEDINE: denaro finto sulle partite reali ---------- */
+var SIM=(function(){var d={bal:100,tickets:[]};try{var s=JSON.parse(localStorage.getItem('pronostici.sim')||'null');if(s&&typeof s.bal==='number'&&Array.isArray(s.tickets)) d=s;}catch(_){}return d;})();
+function saveSim(){try{localStorage.setItem('pronostici.sim',JSON.stringify(SIM));}catch(_){}}
+var SIM_START=100, SIM_MARGIN=0.93;
+var PLAY={src:null,opened:null,market:'s',stake:10,off:{},msg:''};
+var MKT={s:'Segni',d:'Doppie',o:'Over/Under'};
+function r2(x){return Math.round(x*100)/100;}
+function eur(x){return x.toLocaleString('it-IT',{style:'currency',currency:'EUR'});}
+function qfmt(q){return q.toFixed(2).replace('.',',');}
+// quota simulata: probabilità del pronostico con un margine del 7%, come farebbe un book
+function quoteOf(p){return Math.max(1.05,r2(SIM_MARGIN/Math.max(p,0.01)));}
+function whenOf(l){return slipWhen([l.d,l.t,null,null,null]);}
+function simLegs(entries,mk){
+  return entries.map(function(x){
+    var L=x.L,m=x.m,p=predict(L,m[2],m[3],m[0]),leg={lg:L.id,h:m[2],a:m[3],d:m[0],t:m[1]||'',mk:mk,started:!!m[4]};
+    if(mk==='s'){leg.pick=p.sign;leg.prob=Math.max(p.p1,p.px,p.p2);leg.label='Segno '+p.sign;}
+    else if(mk==='d'){leg.pick=p.dbl;leg.prob=p.pdbl;leg.label='Doppia '+p.dbl;}
+    else{var bo=bestOU(p);leg.pick=bo.ob?'over':'under';leg.line=bo.o.line;leg.prob=bo.ob?bo.o.over:bo.o.under;leg.label=(bo.ob?'Over ':'Under ')+String(bo.o.line).replace('.',',');}
+    leg.odds=quoteOf(leg.prob); leg.key=leg.lg+'|'+leg.h+'|'+leg.a; return leg;
+  });
+}
+function playEntries(){
+  if(PLAY.src==='mix') return mixLeague().items.map(function(x){return {L:x.L,m:x.m};});
+  var L=LEAGUES.filter(function(l){return l.id===PLAY.src})[0]; return L?L.matches.map(function(m){return {L:L,m:m};}):[];
+}
+function playName(){ if(PLAY.src==='mix') return {name:'Miste',round:0}; var L=LEAGUES.filter(function(l){return l.id===PLAY.src})[0]; return {name:L?L.name:'',round:L?L.round:0}; }
+function playTotals(){
+  var legs=simLegs(playEntries(),PLAY.market).filter(function(l){return !l.started&&!PLAY.off[l.key];});
+  var q=r2(legs.reduce(function(a,l){return a*l.odds;},1));
+  return {legs:legs,q:q,win:r2(q*(PLAY.stake||0))};
+}
+// punteggio reale di una partita giocata: dal calendario o, se già uscita, dall'archivio
+function legScore(l){
+  var L=LEAGUES.filter(function(x){return x.id===l.lg})[0]; if(!L) return null;
+  var found=null;
+  L.matches.forEach(function(m){ if(m[2]===l.h&&m[3]===l.a&&m[4]&&(m[0]===l.d||m[0]==='W'||l.d==='W')) found=m[4]; });
+  if(!found||found.st!=='FT'){
+    try{ playedList(L).forEach(function(x){ if(x.h===l.h&&x.a===l.a&&(x.d===l.d||l.d==='W'||Math.abs(Date.parse(x.d+'T12:00:00Z')-Date.parse(l.d+'T12:00:00Z'))<=86400000)) found=x.sc; }); }catch(_){}
+  }
+  return found;
+}
+function legState(l){
+  var sc=legScore(l); if(!sc) return {st:'wait'};
+  var o=outcomeOf(sc), g=sc.h+sc.a, ok;
+  if(l.mk==='s') ok=o===l.pick; else if(l.mk==='d') ok=l.pick.indexOf(o)>=0; else ok=l.pick==='over'?g>l.line:g<l.line;
+  if(sc.st==='FT') return {st:ok?'ok':'ko',sc:sc};
+  return {st:'live',ev:ok?'on':'off',sc:sc};
+}
+function ticketState(t){
+  var all=true,lost=false;
+  t.legs.forEach(function(l){var s=legState(l); if(s.st==='ko') lost=true; if(s.st!=='ok') all=false;});
+  return lost?'lost':(all?'won':'open');
+}
+function settleSim(){
+  var ch=false;
+  SIM.tickets.forEach(function(t){
+    if(t.st!=='open') return; var s=ticketState(t);
+    if(s==='won'){t.st='won';SIM.bal=r2(SIM.bal+t.win);ch=true;} else if(s==='lost'){t.st='lost';ch=true;}
+  });
+  if(ch) saveSim(); return ch;
+}
+function playHTML(){
+  var legs=simLegs(playEntries(),PLAY.market), n=0, q=1;
+  var rows=legs.map(function(l){
+    var on=!l.started&&!PLAY.off[l.key]; if(on){n++;q*=l.odds;}
+    return '<li class="leg'+(l.started?' lock':'')+'"><label><input type="checkbox" data-leg="'+encodeURIComponent(l.key)+'"'+(on?' checked':'')+(l.started?' disabled':'')+'>'
+     +'<span class="lt"><span><b>'+l.h+'</b> – <b>'+l.a+'</b></span><small>'+(l.started?'Già iniziata: non si può giocare':whenOf(l))+'</small></span>'
+     +'<span class="lp"><span>'+l.label+'</span><b>'+qfmt(l.odds)+'</b></span></label></li>';
+  }).join('');
+  q=r2(q);
+  var html='<div class="play"><h4>Gioca questa schedina</h4>'
+   +'<p class="tsub" style="margin:0">Simulazione con denaro finto sulle partite reali: nessuna scommessa vera. Le quote sono calcolate dalle probabilità del pronostico, con un margine del 7%, e restano quelle del momento in cui giochi.</p>'
+   +'<div class="seg" role="radiogroup" aria-label="Tipo di giocata">'+['s','d','o'].map(function(k){return '<button type="button" role="radio" aria-checked="'+(PLAY.market===k)+'" data-mk="'+k+'">'+MKT[k]+'</button>';}).join('')+'</div>'
+   +(rows?'<ul class="legs">'+rows+'</ul>':'<p class="tsub">Non ci sono partite caricate in questa giornata.</p>')
+   +'<div class="stakerow"><label for="stake"><b>Importo</b></label><span class="eurbox"><span>€</span><input id="stake" type="number" inputmode="decimal" min="1" step="1" value="'+(PLAY.stake||'')+'"></span>'
+   +[5,10,20,50].map(function(v){return '<button class="rbtn" type="button" data-stake="'+v+'">'+v+'</button>';}).join('')+'</div>'
+   +'<div class="playsum"><div><span>Quota totale</span><b id="pq">'+(n?qfmt(q):'–')+'</b></div><div><span>Vincita possibile</span><b id="pw">'+(n?eur(r2(q*(PLAY.stake||0))):'–')+'</b></div><div><span>Saldo virtuale</span><b id="pb">'+eur(SIM.bal)+'</b></div></div>'
+   +'<button class="bigbtn" id="playBtn" type="button" data-play="1">Gioca schedina</button>'
+   +'<p class="tsub pmsg" id="pmsg" style="margin:0"></p>'
+   +(PLAY.msg?'<p class="pdone">'+PLAY.msg+' <button class="rbtn" type="button" data-opensim="1">Vedi le mie schedine</button></p>':'')
+   +'</div>';
+  return html;
+}
+function updateSummary(){
+  var T=playTotals(), st=PLAY.stake||0, b=$('playBtn'), msg='';
+  if($('pq')) $('pq').textContent=T.legs.length?qfmt(T.q):'–';
+  if($('pw')) $('pw').textContent=T.legs.length?eur(T.win):'–';
+  if($('pb')) $('pb').textContent=eur(SIM.bal);
+  if(!T.legs.length) msg='Seleziona almeno una partita non ancora iniziata.';
+  else if(!(st>=1)) msg='L’importo minimo è 1 €.';
+  else if(st>SIM.bal) msg='Saldo virtuale insufficiente: puoi ricaricarlo dalle tue schedine.';
+  if($('pmsg')) $('pmsg').textContent=msg;
+  if(b) b.disabled=!!msg;
+}
+function refreshPlay(){ var b=$('playbox'); if(b){ b.innerHTML=playHTML(); updateSummary(); } }
+function placeBet(){
+  var T=playTotals(), st=r2(PLAY.stake||0);
+  if(!T.legs.length||!(st>=1)||st>SIM.bal) return;
+  var nm=playName();
+  var t={id:Date.now(),at:Date.now(),name:nm.name,round:nm.round,mk:PLAY.market,stake:st,quota:T.q,win:r2(T.q*st),st:'open',
+    legs:T.legs.map(function(l){return {lg:l.lg,h:l.h,a:l.a,d:l.d,t:l.t,mk:l.mk,pick:l.pick,line:l.line,label:l.label,odds:l.odds};})};
+  SIM.bal=r2(SIM.bal-st); SIM.tickets.unshift(t); saveSim();
+  PLAY.msg='Giocata: '+eur(st)+' a quota '+qfmt(t.quota)+', vincita possibile '+eur(t.win)+'.';
+  refreshPlay(); updateSimBadge();
+}
+function mixSlipHTML(){
+  PLAY.src='mix';
+  return '<div class="shead"><div><span class="kicker">Le 10 doppie più sicure</span><h3 id="slipTitle">Miste</h3></div><button class="rbtn" id="slipClose" data-close="1">Chiudi</button></div>'
+   +'<div id="playbox">'+playHTML()+'</div>'
+   +'<p class="tsub" style="margin:0">Stime statistiche, non garantiscono nessun esito. Il gioco è vietato ai minori e può causare dipendenza patologica.</p>';
+}
+function renderSlip(){
+  if(!slipId||$('slip').hidden) return;
+  if(document.activeElement&&document.activeElement.id==='stake') return;
+  if(slipId==='mix'){ $('slipbox').innerHTML=mixSlipHTML(); updateSummary(); return; }
+  var L=LEAGUES.filter(function(l){return l.id===slipId})[0]; if(L){ $('slipbox').innerHTML=slipHTML(L); updateSummary(); }
+}
+/* le mie schedine */
+function ticketHTML(t){
+  var pill=t.st==='open'?'In corso':(t.st==='won'?'Vinta':'Persa');
+  var legs=t.legs.map(function(l){
+    var s=legState(l), right;
+    if(s.st==='wait') right='<span class="tsub">'+whenOf(l)+'</span>';
+    else{
+      var sc=s.sc, score='<b>'+sc.h+'–'+sc.a+'</b> ';
+      if(s.st==='ok') right=score+'<span class="vd ok">✓ centrata</span>';
+      else if(s.st==='ko') right=score+'<span class="vd ko">✗ sbagliata</span>';
+      else right=score+'<span class="vd on">'+(s.ev==='on'?'… in linea':'… fuori linea')+'</span>';
+    }
+    return '<div class="tkleg"><span><b>'+l.h+'</b> – <b>'+l.a+'</b><br><small class="tsub">'+l.label+' · quota '+qfmt(l.odds)+'</small></span><span class="tkr">'+right+'</span></div>';
+  }).join('');
+  var foot=t.st==='open'?'Vincita possibile <b>'+eur(t.win)+'</b>':(t.st==='won'?'Incassato <b>'+eur(t.win)+'</b> (guadagno '+eur(r2(t.win-t.stake))+')':'Persi <b>'+eur(t.stake)+'</b>');
+  var d=new Date(t.at).toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+  return '<article class="tk '+t.st+'"><div class="tkhead"><div><b>'+t.name+(t.round?' · giornata '+t.round:'')+'</b><div class="tsub">'+MKT[t.mk]+' · '+t.legs.length+(t.legs.length===1?' partita':' partite')+' · giocata il '+d+'</div></div><span class="tkpill '+t.st+'">'+pill+'</span></div>'
+   +legs+'<div class="tkfoot"><span>Importo <b>'+eur(t.stake)+'</b> · Quota finale <b>'+qfmt(t.quota)+'</b></span><span>'+foot+'</span></div></article>';
+}
+function simHTML(){
+  var closed=SIM.tickets.filter(function(t){return t.st!=='open';}), open=SIM.tickets.filter(function(t){return t.st==='open';});
+  var wins=closed.filter(function(t){return t.st==='won';}), staked=0, back=0;
+  closed.forEach(function(t){staked+=t.stake; if(t.st==='won') back+=t.win;});
+  var net=r2(back-staked);
+  return '<div class="shead"><h3 id="simTitle">Le mie schedine</h3><button class="rbtn" id="simClose" type="button" data-close-sim="1">Chiudi</button></div>'
+   +'<p class="tsub" style="margin:0">Simulazione con denaro finto sulle partite reali. Le schedine si chiudono da sole quando finiscono le partite.</p>'
+   +'<div class="gsum"><div><span>Saldo virtuale</span><b>'+eur(SIM.bal)+'</b></div><div><span>In corso</span><b>'+open.length+'</b></div>'
+   +'<div><span>Vinte / chiuse</span><b>'+wins.length+'/'+closed.length+'</b></div><div><span>Bilancio</span><b style="color:var(--'+(net>=0?'good':'bad')+')">'+(net>0?'+':'')+eur(net)+'</b></div></div>'
+   +(SIM.tickets.length?'<div class="tkl">'+SIM.tickets.map(ticketHTML).join('')+'</div>':'<div class="empty">Non hai ancora giocato nessuna schedina. Apri «Schedina» di un campionato e scegli importo e partite.</div>')
+   +'<div class="simact">'+(SIM.bal<SIM_START?'<button class="rbtn" type="button" data-recharge="1">Ricarica a '+eur(SIM_START)+'</button>':'')+(SIM.tickets.length?'<button class="rbtn" type="button" data-simreset="1">Ricomincia da capo</button>':'')+'</div>';
+}
+function openSim(){ settleSim(); $('simbox').innerHTML=simHTML(); $('sim').hidden=false; var c=$('simClose'); if(c) c.focus(); }
+function closeSim(){ if($('sim').hidden) return; $('sim').hidden=true; var g=$('simbtn'); if(g) g.focus(); }
+function updateSimBadge(){
+  var n=SIM.tickets.filter(function(t){return t.st==='open';}).length, b=$('simbadge'); if(!b) return;
+  b.textContent=n; b.hidden=!n;
+}
+function afterData(){
+  if(settleSim()) { /* schedine chiuse */ }
+  updateSimBadge();
+  if(!$('sim').hidden) $('simbox').innerHTML=simHTML();
+  renderSlip();
+}
+document.addEventListener('click',function(e){
+  var t=e.target;
+  if(t.closest('#simbtn')||t.closest('[data-opensim]')){ closeSlip(); openSim(); return; }
+  if(t.id==='sim'||t.closest('[data-close-sim]')){ closeSim(); return; }
+  var mk=t.closest('[data-mk]'); if(mk){ PLAY.market=mk.getAttribute('data-mk'); PLAY.msg=''; refreshPlay(); return; }
+  var sk=t.closest('[data-stake]'); if(sk){ PLAY.stake=Number(sk.getAttribute('data-stake')); PLAY.msg=''; refreshPlay(); return; }
+  if(t.closest('[data-play]')){ placeBet(); return; }
+  if(t.closest('[data-recharge]')){ SIM.bal=SIM_START; saveSim(); afterData(); return; }
+  if(t.closest('[data-simreset]')){ if(confirm('Cancellare tutte le schedine e ripartire da '+eur(SIM_START)+'?')){ SIM.bal=SIM_START; SIM.tickets=[]; saveSim(); afterData(); } return; }
+});
+document.addEventListener('change',function(e){
+  var c=e.target.closest&&e.target.closest('[data-leg]'); if(!c) return;
+  PLAY.off[decodeURIComponent(c.getAttribute('data-leg'))]=!c.checked; PLAY.msg=''; refreshPlay();
+});
+document.addEventListener('input',function(e){
+  if(e.target.id!=='stake') return;
+  PLAY.stake=parseFloat(String(e.target.value).replace(',','.'))||0; PLAY.msg=''; updateSummary();
 });
 
 try{ var hh=(location.hash||'').slice(1); if(hh==='mix'||LEAGUES.some(function(l){return l.id===hh})) state.league=hh; }catch(_){}
@@ -1074,7 +1298,7 @@ function applyScores(live){
       if(so.st==='FT'&&!(m[4]&&m[4].st==='FT')){ JUST[hn+'|'+an]=Date.now(); ended=true; }
       m[4]=so;changed=true;} });
   });
-  if(changed){ if(ended) loadHistory(); render(); if(slipId&&!$('slip').hidden){var L2=LEAGUES.filter(function(l){return l.id===slipId})[0]; if(L2) $('slipbox').innerHTML=slipHTML(L2);} }
+  if(changed){ if(ended) loadHistory(); render(); }
 }
 function applyLive(data){
   var summary=[], when=data.generatedAt?new Date(data.generatedAt):null;

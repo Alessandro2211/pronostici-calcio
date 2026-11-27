@@ -28,6 +28,10 @@ L'ingranaggio in alto a destra apre le impostazioni: tema (sistema, chiaro, scur
 
 Accanto al nome di ogni squadra compaiono i gol; sotto, lo stato (Primo tempo, Intervallo, Secondo tempo con il minuto, oppure Finale) e l'Over/Under favorito per ogni linea, con ✓ centrata, ✗ sbagliata oppure «in linea» o «fuori linea» finché la partita è in corso. Il riquadro del pronostico mostra se il segno è in linea con il risultato. Nella scheda Giocate le partite finite restano salvate fino a fine stagione e si filtrano per giornata. Sopra l'elenco c'è il riepilogo della giornata, e la schedina mostra l'esito di ogni pick.
 
+## Simulazione schedine
+
+Il pulsante «Schedina» di ogni campionato (e «Gioca le Miste» nelle Miste) permette di giocare una schedina con denaro finto sulle partite reali: si sceglie il tipo (Segni, Doppie oppure Over/Under), le partite non ancora iniziate e l'importo. La quota di ogni partita è calcolata dalla probabilità del pronostico con un margine del 7% e resta quella del momento della giocata; la quota totale è il prodotto delle quote. Il biglietto con l'icona in alto a destra apre «Le mie schedine»: saldo virtuale (si parte da 100 €), schedine in corso con esito partita per partita («in linea» o «fuori linea» mentre si gioca) e storico. Le schedine si chiudono da sole quando finiscono le partite: persa appena una partita è sbagliata, vinta quando sono tutte giuste. Tutto è salvato nel browser, non c'è nessuna scommessa vera.
+
 ## Attivazione (una sola volta)
 
 1. Il repository deve essere pubblico (con un account gratuito GitHub Pages non funziona su quelli privati).
