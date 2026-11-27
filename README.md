@@ -32,6 +32,10 @@ Accanto al nome di ogni squadra compaiono i gol; sotto, lo stato (Primo tempo, I
 
 Il pulsante «Schedina» di ogni campionato (e «Gioca le Miste» nelle Miste) permette di giocare una schedina con denaro finto sulle partite reali: si sceglie il tipo (Segni, Doppie oppure Over/Under), le partite non ancora iniziate e l'importo. La quota di ogni partita è calcolata dalla probabilità del pronostico con un margine del 7% e resta quella del momento della giocata; la quota totale è il prodotto delle quote. Il biglietto con l'icona in alto a destra apre «Le mie schedine»: saldo virtuale (si parte da 100 €), schedine in corso con esito partita per partita («in linea» o «fuori linea» mentre si gioca) e storico. Le schedine si chiudono da sole quando finiscono le partite: persa appena una partita è sbagliata, vinta quando sono tutte giuste. Tutto è salvato nel browser, non c'è nessuna scommessa vera.
 
+### Simulatore per ogni partita e multipla
+
+Ogni partita non ancora iniziata ha la riga «Simula»: apre le quote di Esito (1 X 2), Doppia, Under/Over 1,5 · 2,5 · 3,5 e Goal/No goal. Toccando una quota la giocata va nella multipla, anche di campionati diversi (una giocata per partita); la barra in basso mostra partite e quota totale e apre la multipla, dove scegli l'importo e giochi. Le quote vengono dai bookmaker di football-data.co.uk (media, Bet365, Pinnacle, William Hill ecc., a scelta da «Quote da»); le Doppie sono calcolate dalle quote 1X2 dello stesso bookmaker. Dove i bookmaker non le danno (altre linee Over/Under, Goal/No goal, Champions ed Europa League) la quota è una stima del modello con margine del 7% e porta un asterisco. Sisal, Eurobet e simili non hanno quote pubbliche gratuite, quindi non sono disponibili.
+
 ## Attivazione (una sola volta)
 
 1. Il repository deve essere pubblico (con un account gratuito GitHub Pages non funziona su quelli privati).

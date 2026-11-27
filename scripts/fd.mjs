@@ -29,6 +29,19 @@ function csv(text) {
 const num = (x) => { const v = parseFloat(x); return Number.isNaN(v) ? null : v; };
 const dt = (s) => { const m = /^(\d\d)\/(\d\d)\/(\d{2,4})$/.exec(s || ''); if (!m) return null; return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + m[2] + '-' + m[1]; };
 
+// Bookmaker presenti nei file di football-data.co.uk (sigla delle colonne) e quote 1X2 + Over/Under 2,5 di ciascuno per le prossime partite
+const BOOKS = ['B365', 'BW', 'IW', 'PS', 'P', 'WH', 'VC', 'BF', 'BMGM', 'BV', 'CL', 'LB', 'GB', 'SB', 'SJ', 'SO', 'SY', 'Max'];
+function perBook(r) {
+  const bk = {};
+  for (const c of BOOKS) {
+    const h = num(r[c + 'H']), d = num(r[c + 'D']), a = num(r[c + 'A']);
+    if ([h, d, a].some((v) => v == null || v <= 1)) continue;
+    const ov = num(r[c + '>2.5']), un = num(r[c + '<2.5']);
+    bk[c] = [h, d, a, ov != null && ov > 1 ? ov : null, un != null && un > 1 ? un : null];
+  }
+  return bk;
+}
+
 const now = new Date();
 const y = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
 const season = String(y).slice(2) + String(y + 1).slice(2);
@@ -69,7 +82,8 @@ try {
     const o1 = [num(r.AvgH) ?? num(r.B365H), num(r.AvgD) ?? num(r.B365D), num(r.AvgA) ?? num(r.B365A)];
     if (!d || !h || !a || o1.some((v) => v == null || v <= 1)) continue;
     const ou = [num(r['Avg>2.5']) ?? num(r['B365>2.5']), num(r['Avg<2.5']) ?? num(r['B365<2.5'])];
-    out.o.push({ lg, d, t: r.Time || null, h, a, o: o1, ou: ou.some((v) => v == null || v <= 1) ? null : ou });
+    const bk = perBook(r);
+    out.o.push({ lg, d, t: r.Time || null, h, a, o: o1, ou: ou.some((v) => v == null || v <= 1) ? null : ou, ...(Object.keys(bk).length ? { bk } : {}) });
   }
 } catch (e) { console.log('::warning::football-data fixtures: ' + e.message); }
 out.bad = [...bad].sort(); out.n = { m: out.m.length, ostat: out.m.filter((x) => x.o).length, o: out.o.length, next: out.o.map((x) => x.lg + ' ' + x.d).slice(0, 4) };
