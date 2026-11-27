@@ -1,7 +1,7 @@
 // Risultati in diretta letti direttamente da ESPN (nessuna chiave), dal programma e non da GitHub.
 // Il file live.json pubblicato dipende da GitHub Actions, che parte solo ogni poche ore: qui no.
 // Restituisce lo stesso formato di site/data/live.json.
-const CODES = { 'serie-a': 'ita.1', premier: 'eng.1', liga: 'esp.1', bundesliga: 'ger.1', ligue1: 'fra.1', eredivisie: 'ned.1', primeira: 'por.1' };
+const CODES = { 'serie-a': 'ita.1', premier: 'eng.1', liga: 'esp.1', bundesliga: 'ger.1', ligue1: 'fra.1', eredivisie: 'ned.1', primeira: 'por.1', champions: 'uefa.champions', europa: 'uefa.europa' };
 const DAY = 86400000;
 const ymd = (t) => new Date(t).toISOString().slice(0, 10).replace(/-/g, '');
 

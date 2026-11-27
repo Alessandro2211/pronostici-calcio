@@ -77,3 +77,7 @@ Il tabellone ESPN di ogni partita contiene gol (con marcatore) ed espulsioni; il
 ## Campionato «Miste»
 
 Accanto ai sette campionati c'è un ottavo riquadro, «Miste»: le 10 partite non ancora iniziate, di qualunque campionato, con la doppia chance più probabile, mostrate come le partite di un campionato (schede complete, raggruppate per giorno, con il campionato sopra ogni scheda). La nota in alto indica la probabilità che le dieci doppie siano tutte giuste, calcolata come se fossero indipendenti.
+
+## Champions League ed Europa League
+
+Due riquadri in più, con partite, classifica della fase a girone, marcatori, partite giocate e schedina come i campionati. I dati vengono da ESPN (`uefa.champions`, `uefa.europa`). La forza di ogni squadra parte da quella che ha nel proprio campionato (per le squadre dei sette campionati seguiti, con una piccola correzione per Ligue 1, Eredivisie e Primeira Liga) oppure da una stima fissa per le altre, e si sposta con i risultati europei (peso g/(g+10)). Football-data non ha quote per queste partite: il pronostico è del solo modello, che nelle prove sui campionati andava peggio delle quote. Le coppe non entrano nel riquadro «Miste».

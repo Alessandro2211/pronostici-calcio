@@ -448,7 +448,33 @@ var LEAGUES = [
     ['Kiwior','Porto',7.77,3],['Altimira','Sporting',7.70,3],['Fontán','Arouca',7.67,3],['Léo Santos','Nacional',7.63,3],['Zé Vitor','Nacional',7.57,3],
     ['Barrenechea','Benfica',7.55,2],['Paciência','Santa Clara',7.53,3],['Antonetti','Estrela Amadora',7.50,2],['Lenglet','Benfica',7.50,2],['Bednarek','Porto',7.47,3],
     ['Esgaio','Gil Vicente',7.45,2],['Buatu','Gil Vicente',7.45,2],['Sanusi','Porto',7.43,3],['Figueiredo','Alverca',7.37,3],['Diogo Costa','Porto',7.33,3]],
-   foot:''} }
+   foot:''} },
+{ id:'champions', name:'Champions League', country:'Europa', code:'EU', uefa:true, h:140, T:2.8, hfa:65, round:6, dates:'', played:5,
+  note:'Forza delle squadre dal rendimento nel proprio campionato (per le squadre dei sette campionati qui seguiti) e dalla fase a girone europea; per le altre una stima di partenza. Niente quote dei bookmaker per queste partite: pronostico del solo modello.',
+  teams:[
+   T('Real Madrid',1700),T('Arsenal',1700),T('Barcelona',1700),T('Bayern Munich',1700),
+   T('Internazionale',1700),T('Paris Saint-Germain',1700),T('Manchester City',1700),T('Liverpool',1700),
+   T('Atlético Madrid',1700),T('Borussia Dortmund',1700),T('Napoli',1700),T('AS Roma',1700),
+   T('Como',1700),T('Aston Villa',1700),T('Manchester United',1700),T('RB Leipzig',1700),
+   T('VfB Stuttgart',1700),T('Lille',1700),T('Lens',1700),T('Real Betis',1700),
+   T('Villarreal',1700),T('PSV Eindhoven',1700),T('Feyenoord Rotterdam',1700),T('FC Porto',1700),
+   T('Sporting CP',1700),T('Galatasaray',1740),T('Fenerbahce',1730),T('Club Brugge',1700),
+   T('Shakhtar Donetsk',1650),T('Slavia Prague',1650),T('Bodo/Glimt',1640),T('AEK Athens',1620),
+   T('Viking FK',1560),T('LASK Linz',1560),T('Slovan Bratislava',1500),T('Sabah FK',1500)],
+  matches:[], scorers:{}, ratings:null },
+{ id:'europa', name:'Europa League', country:'Europa', code:'EU', uefa:true, h:140, T:2.8, hfa:65, round:6, dates:'', played:5,
+  note:'Forza delle squadre dal rendimento nel proprio campionato (per le squadre dei sette campionati qui seguiti) e dalla fase a girone europea; per le altre una stima di partenza. Niente quote dei bookmaker per queste partite: pronostico del solo modello.',
+  teams:[
+   T('AC Milan',1700),T('Juventus',1700),T('AFC Bournemouth',1700),T('Crystal Palace',1700),
+   T('Sunderland',1700),T('Bayer Leverkusen',1700),T('TSG Hoffenheim',1700),T('Lyon',1700),
+   T('Marseille',1700),T('Stade Rennais',1700),T('Celta Vigo',1700),T('Real Sociedad',1700),
+   T('Benfica',1700),T('AZ Alkmaar',1700),T('NEC Nijmegen',1700),T('Celtic',1650),
+   T('Olympiacos',1650),T('Besiktas',1650),T('RB Salzburg',1650),T('Anderlecht',1620),
+   T('Union St.-Gilloise',1640),T('Sparta Prague',1620),T('SK Sturm Graz',1600),T('Dinamo Zagreb',1600),
+   T('Viktoria Plzen',1590),T('Ferencvaros',1580),T('Lech Poznan',1580),T('Jagiellonia Bialystok',1560),
+   T('Hapoel Be\'er',1540),T('Omonia Nicosia',1520),T('Lillestrom',1500),T('Levski Sofia',1500),
+   T('NK Celje',1500),T('OFI Crete',1500),T('Torreense',1480),T('Ararat-Armenia',1450)],
+  matches:[], scorers:{}, ratings:null }
 ];
 
 /* ---------- MODELLO ---------- */
@@ -546,9 +572,19 @@ function rebuildStats(L){
   statList(L).forEach(function(e){ put(e.h,e.a,e.st); });
   L.tstat=agg; L._bt=null; rebuildScorers(L);
 }
+// Coppe europee: la forza di partenza di una squadra è quella che ha nel proprio campionato (se è tra i sette seguiti), meno una piccola correzione per il livello del campionato.
+var DOM_OFF={'serie-a':0,premier:0,liga:0,bundesliga:0,ligue1:-20,eredivisie:-40,primeira:-40};
+var DOM_SKIP={'Sparta Prague':1};
+function domesticFor(name){
+  if(DOM_SKIP[name]) return null;
+  for(var i=0;i<LEAGUES.length;i++){ var D=LEAGUES[i]; if(D.uefa) continue; var n=NameMatch.matchTeam({name:name,shortName:name},D.teams.map(function(t){return t[0]})); if(n) return {L:D,n:n}; }
+  return null;
+}
 function teamState(L,name,isHome){
   var t=teamRow(L,name);
-  var prior=t.prior, g=t.g||0, ppg=null, perf=null, w=0, ss=statRow(L,name);
+  var prior=t.prior;
+  if(L.uefa){ var dm=domesticFor(name); if(dm){ var ds=teamState(dm.L,dm.n,false); prior=ds.R-ds.venue+(DOM_OFF[dm.L.id]||0); } }
+  var g=t.g||0, ppg=null, perf=null, w=0, ss=statRow(L,name);
   if(g>0 && (t.pts!=null || t.pos!=null)){
     ppg = t.pts!=null ? t.pts/g : 1.37+(10.5-t.pos)*0.09;
     if(ss){
@@ -561,6 +597,7 @@ function teamState(L,name,isHome){
       if(t.asr!=null && asrMean(L)!=null) perf += (t.asr-asrMean(L))*100;
     }
   }
+  if(L.uefa&&g>0) w=g/(g+10); // poche partite europee: pesa di più la forza nel campionato
   var R = perf==null ? prior : prior*(1-w)+perf*w;
   var venue=0, venuePPG=null;
   if(t.split && ppg!=null){
@@ -633,7 +670,7 @@ function fmtDay(d){if(d==='W')return 'Weekend 9–11 ottobre · orari da definir
 /* ---------- CAMPIONATO "MISTE": le 10 doppie più sicure di tutti i campionati ---------- */
 // Si presenta come un campionato in più: le dieci partite non ancora iniziate, di qualunque campionato, con la doppia chance più probabile.
 function mixLeague(){
-  var pool=[]; LEAGUES.forEach(function(L){ L.matches.forEach(function(m){ if(m[4]) return; pool.push({L:L,m:m,pd:predict(L,m[2],m[3],m[0]).pdbl}); }); });
+  var pool=[]; LEAGUES.forEach(function(L){ if(L.uefa) return; L.matches.forEach(function(m){ if(m[4]) return; pool.push({L:L,m:m,pd:predict(L,m[2],m[3],m[0]).pdbl}); }); });
   var top=pool.sort(function(a,b){return b.pd-a.pd}).slice(0,10);
   var all=top.reduce(function(a,x){return a*x.pd},1);
   top.sort(function(a,b){return (a.m[0]+(a.m[1]||'')).localeCompare(b.m[0]+(b.m[1]||''));});
@@ -652,6 +689,8 @@ var FLAGS={
  bundesliga:'<rect width="30" height="20" fill="#000"/><rect y="6.67" width="30" height="6.67" fill="#DD0000"/><rect y="13.33" width="30" height="6.67" fill="#FFCE00"/>',
  ligue1:'<rect width="30" height="20" fill="#fff"/><rect width="10" height="20" fill="#0055A4"/><rect x="20" width="10" height="20" fill="#EF4135"/>',
  eredivisie:'<rect width="30" height="20" fill="#fff"/><rect width="30" height="6.67" fill="#AE1C28"/><rect y="13.33" width="30" height="6.67" fill="#21468B"/>',
+ champions:'<rect width="30" height="20" fill="#0B1D5C"/><g fill="#fff">'+(function(){var o='';for(var i=0;i<8;i++){var a=i*Math.PI/4;o+='<circle cx="'+(15+6.2*Math.cos(a)).toFixed(1)+'" cy="'+(10+6.2*Math.sin(a)).toFixed(1)+'" r="1.5"/>';}return o;})()+'</g><circle cx="15" cy="10" r="2.6" fill="#fff"/>',
+ europa:'<rect width="30" height="20" fill="#F47B20"/><g fill="#fff">'+(function(){var o='';for(var i=0;i<8;i++){var a=i*Math.PI/4;o+='<circle cx="'+(15+6.2*Math.cos(a)).toFixed(1)+'" cy="'+(10+6.2*Math.sin(a)).toFixed(1)+'" r="1.5"/>';}return o;})()+'</g><circle cx="15" cy="10" r="2.6" fill="#fff"/>',
  mix:'<rect width="30" height="20" fill="#009246"/><rect x="4.3" width="4.3" height="20" fill="#fff"/><rect x="8.6" width="4.3" height="20" fill="#CE1124"/><rect x="12.9" width="4.3" height="20" fill="#FFCE00"/><rect x="17.2" width="4.3" height="20" fill="#0055A4"/><rect x="21.5" width="4.3" height="20" fill="#AE1C28"/><rect x="25.8" width="4.2" height="20" fill="#006600"/>',
  primeira:'<rect width="30" height="20" fill="#FF0000"/><rect width="12" height="20" fill="#006600"/><circle cx="12" cy="10" r="3.6" fill="#FFE000"/><circle cx="12" cy="10" r="2" fill="#FF0000"/><circle cx="12" cy="10" r="1" fill="#fff"/>'
 };
@@ -871,7 +910,7 @@ function backtest(L){
   list.forEach(function(x){
     var H=st[x.h], A=st[x.a]; if(!H||!A) return;
     var rows=L.teams.map(function(t){var s=st[t[0]]; return [t[0],t[1],s.g?s.pts:null,s.g,s.g?s.gf-s.ga:null,null,s.g?s.gf:null,null,null];});
-    var p=predict({T:L.T,hfa:L.hfa,teams:rows,scorers:{},ratings:null,tstat:ts,oddsLg:L.id},x.h,x.a,x.d), sc=x.sc;
+    var p=predict({T:L.T,hfa:L.hfa,teams:rows,scorers:{},ratings:null,tstat:ts,oddsLg:L.id,uefa:L.uefa},x.h,x.a,x.d), sc=x.sc;
     items.push({k:x.k,d:x.d,t:x.t,h:x.h,a:x.a,sc:sc,md:Math.max(H.g,A.g)+1,real:outcomeOf(sc),
       sign:p.sign,psign:Math.max(p.p1,p.px,p.p2),signOk:evalSign(p,sc)==='ok',
       dbl:p.dbl,pdbl:p.pdbl,dblOk:evalDbl(p,sc)==='ok',
@@ -960,7 +999,8 @@ function metodoHTML(){
 
 function renderPanel(){
   var L=cur();
-  var tabs=L.id==='mix'?[['partite','Partite'],['metodo','Metodo']]:[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']];
+  var tabs=L.id==='mix'?[['partite','Partite'],['metodo','Metodo']]:(L.uefa?[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['metodo','Metodo']]:[['partite','Partite'],['giocate','Giocate'],['classifica','Classifica'],['marcatori','Marcatori'],['voti','Voti'],['metodo','Metodo']]);
+  if(L.uefa&&state.tab==='voti') state.tab='partite';
   if(L.id==='mix'&&state.tab!=='metodo') state.tab='partite';
   var rounds=L.id==='mix'?'<button class="rbtn" aria-pressed="true">Prossime partite · '+L.dates+'</button>'
     :'<button class="rbtn" aria-pressed="true">Giornata '+L.round+' · '+L.dates+'</button>'
@@ -1122,7 +1162,7 @@ if(window.desktopApp&&window.desktopApp.onLive){ try{ window.desktopApp.onLive(o
 // Il file live.json di GitHub si rinnova solo ogni poche ore. Se ESPN permette la lettura dal browser, durante le
 // partite la pagina chiede i risultati direttamente; se la richiesta viene bloccata si torna al file e non si riprova per 30 minuti.
 var WEB={ok:null,at:0,last:0,off:0};
-var ESPN_CODE={'serie-a':'ita.1',premier:'eng.1',liga:'esp.1',bundesliga:'ger.1',ligue1:'fra.1',eredivisie:'ned.1',primeira:'por.1'};
+var ESPN_CODE={'serie-a':'ita.1',premier:'eng.1',liga:'esp.1',bundesliga:'ger.1',ligue1:'fra.1',eredivisie:'ned.1',primeira:'por.1',champions:'uefa.champions',europa:'uefa.europa'};
 function webFresh(){return WEB.ok===true&&Date.now()-WEB.at<180000;}
 function espnStatus(ev){
   var t=(ev.status&&ev.status.type)||{};
@@ -1253,7 +1293,7 @@ function advanceRound(L){
     // 2) giornata successiva: prima serie di partite non finite (stesse regole dello script: squadra che torna o pausa > 3 giorni)
     var groups=[], cur=null, teamsIn=null, last=0;
     list.forEach(function(m){var t=Date.parse(m.utc); if(!cur||teamsIn[m.hn]||teamsIn[m.an]||t-last>3*86400000){cur=[];teamsIn={};groups.push(cur);} cur.push(m); teamsIn[m.hn]=1; teamsIn[m.an]=1; last=t;});
-    var minSize=Math.max(2,Math.ceil(names.length/4)), next=null;
+    var minSize=L.uefa?4:Math.max(2,Math.ceil(names.length/4)), next=null;
     for(var i=0;i<groups.length;i++){ if(groups[i].length>=minSize&&groups[i].some(function(m){return !m.fin;})){next=groups[i];break;} }
     var standP=espnGet('https://site.api.espn.com/apis/v2/sports/soccer/'+ESPN_CODE[L.id]+'/standings').catch(function(){return null;});
     return Promise.all(sj.concat([standP])).then(function(r){

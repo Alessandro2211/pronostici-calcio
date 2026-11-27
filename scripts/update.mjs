@@ -18,7 +18,7 @@ const NameMatch = require(path.join(root, 'site', 'names.js'));
 const OUT = path.join(root, 'site', 'data', 'dati.json');
 const OUT_LIVE = path.join(root, 'site', 'data', 'live.json');
 const OUT_HIST = path.join(root, 'site', 'data', 'storico.json');
-const CODES = { 'serie-a': 'ita.1', premier: 'eng.1', liga: 'esp.1', bundesliga: 'ger.1', ligue1: 'fra.1', eredivisie: 'ned.1', primeira: 'por.1' };
+const CODES = { 'serie-a': 'ita.1', premier: 'eng.1', liga: 'esp.1', bundesliga: 'ger.1', ligue1: 'fra.1', eredivisie: 'ned.1', primeira: 'por.1', champions: 'uefa.champions', europa: 'uefa.europa' };
 const FULL_EVERY = 30 * 60 * 1000;
 const DAY = 86400000;
 const PENDING = ['TIMED', 'IN_PLAY', 'PAUSED'];
@@ -278,7 +278,7 @@ async function backfillHist(id, code, now) {
 function buildLeague(L, code, all, standings, now) {
   const names = L.teams.map((t) => t[0]);
   const groups = groupRounds(all);
-  const pick = pickRound(groups, Math.floor(names.length / 2));
+  const pick = pickRound(groups, L.uefa ? 8 : Math.floor(names.length / 2));
   let matchday = null;
   if (pick && standings.total.length) {
     const gp = new Map(standings.total.map((r) => [NameMatch.matchTeam(r.team, names), r.played]));
