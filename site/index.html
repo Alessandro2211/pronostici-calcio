@@ -1278,7 +1278,7 @@ function settleSim(){
   var ch=false;
   SIM.tickets.forEach(function(t){
     if(t.st!=='open') return; var s=ticketState(t);
-    if(s==='won'){t.st='won';SIM.bal=r2(SIM.bal+t.win);ch=true;} else if(s==='lost'){t.st='lost';ch=true;}
+    if(s==='won'){t.st='won';ch=true;} else if(s==='lost'){t.st='lost';ch=true;}
   });
   if(ch) saveSim(); return ch;
 }
@@ -1311,7 +1311,7 @@ function playHTML(){
   }).join('');
   q=r2(q);
   var win=n?eur(r2(q*(PLAY.stake||0))):'–';
-  return '<div class="play"><div class="phead"><h4>'+(cart?'Biglietto':'Gioca questa schedina')+'</h4><span class="pbal">Saldo <b id="pb">'+eur(SIM.bal)+'</b></span></div>'
+  return '<div class="play"><div class="phead"><h4>'+(cart?'Biglietto':'Gioca questa schedina')+'</h4></div>'
    +bookSelect()
    +(cart?'':'<div class="seg" role="radiogroup" aria-label="Tipo di giocata">'+['s','d','o'].map(function(k){return '<button type="button" role="radio" aria-checked="'+(PLAY.market===k)+'" data-mk="'+k+'">'+MKT[k]+'</button>';}).join('')+'</div>')
    +(rows?'<ul class="legs">'+rows+'</ul>':'<p class="tsub">'+(cart?'La multipla è vuota. Apri «Simula» in una partita e tocca le quote che vuoi aggiungere, anche di campionati diversi.':'Non ci sono partite caricate in questa giornata.')+'</p>')
@@ -1333,21 +1333,19 @@ function updateSummary(){
   var T=playTotals(), st=PLAY.stake||0, b=$('playBtn'), msg='';
   if($('pq')) $('pq').textContent=T.legs.length?qfmt(T.q):'–';
   if($('pw')) $('pw').textContent=T.legs.length?eur(T.win):'–';
-  if($('pb')) $('pb').textContent=eur(SIM.bal);
   if(!T.legs.length) msg=PLAY.src==='cart'?'Aggiungi almeno una partita alla multipla.':'Seleziona almeno una partita non ancora iniziata.';
   else if(!(st>=1)) msg='L’importo minimo è 1 €.';
-  else if(st>SIM.bal) msg='Saldo virtuale insufficiente: puoi ricaricarlo dalle tue schedine.';
   if($('pmsg')) $('pmsg').textContent=msg;
   if(b) b.disabled=!!msg;
 }
 function refreshPlay(){ var b=$('playbox'); if(b){ b.innerHTML=playHTML(); updateSummary(); } }
 function placeBet(){
   var T=playTotals(), st=r2(PLAY.stake||0), cart=PLAY.src==='cart';
-  if(!T.legs.length||!(st>=1)||st>SIM.bal) return;
+  if(!T.legs.length||!(st>=1)) return;
   var nm=playName();
   var t={id:Date.now(),at:Date.now(),name:nm.name,round:nm.round,mk:cart?'x':PLAY.market,stake:st,quota:T.q,win:r2(T.q*st),st:'open',
     legs:T.legs.map(function(l){return {lg:l.lg,h:l.h,a:l.a,d:l.d,t:l.t,mk:'x',pick:l.pick,label:l.label,odds:l.odds};})};
-  SIM.bal=r2(SIM.bal-st); SIM.tickets.unshift(t); saveSim();
+  SIM.tickets.unshift(t); saveSim();
   PLAY.msg='Giocata: '+eur(st)+' a quota '+qfmt(t.quota)+', vincita possibile '+eur(t.win)+'.';
   if(cart){ CART.length=0; saveCart(); renderPanel(); }
   refreshPlay(); updateSimBadge(); updateCartBar();
@@ -1437,10 +1435,10 @@ function simHTML(){
   var net=r2(back-staked);
   return '<div class="shead"><h3 id="simTitle">Le mie schedine</h3><button class="rbtn" id="simClose" type="button" data-close-sim="1">Chiudi</button></div>'
    +'<p class="tsub" style="margin:0">Simulazione con denaro finto sulle partite reali. Le schedine si chiudono da sole quando finiscono le partite.</p>'
-   +'<div class="gsum"><div><span>Saldo virtuale</span><b>'+eur(SIM.bal)+'</b></div><div><span>In corso</span><b>'+open.length+'</b></div>'
+   +'<div class="gsum"><div><span>In corso</span><b>'+open.length+'</b></div>'
    +'<div><span>Vinte / chiuse</span><b>'+wins.length+'/'+closed.length+'</b></div><div><span>Bilancio</span><b style="color:var(--'+(net>=0?'good':'bad')+')">'+(net>0?'+':'')+eur(net)+'</b></div></div>'
    +(SIM.tickets.length?'<div class="tkl">'+SIM.tickets.map(ticketHTML).join('')+'</div>':'<div class="empty">Non hai ancora giocato nessuna schedina. Apri «Simula» in una partita, oppure «Schedina» di un campionato.</div>')
-   +'<div class="simact">'+(SIM.bal<SIM_START?'<button class="rbtn" type="button" data-recharge="1">Ricarica a '+eur(SIM_START)+'</button>':'')+(SIM.tickets.length?'<button class="rbtn" type="button" data-simreset="1">Ricomincia da capo</button>':'')+'</div>';
+   +'<div class="simact">'+(SIM.tickets.length?'<button class="rbtn" type="button" data-simreset="1">Ricomincia da capo</button>':'')+'</div>';
 }
 function openSim(){ closeCart(); settleSim(); $('simbox').innerHTML=simHTML(); $('sim').hidden=false; var c=$('simClose'); if(c) c.focus(); }
 function closeSim(){ if($('sim').hidden) return; $('sim').hidden=true; var g=$('simbtn'); if(g) g.focus(); }
@@ -1468,8 +1466,7 @@ document.addEventListener('click',function(e){
   var sp=t.closest('[data-step]'); if(sp){ PLAY.stake=Math.max(1,(Number(PLAY.stake)||0)+Number(sp.getAttribute('data-step'))); PLAY.msg=''; refreshPlay(); return; }
   var sk=t.closest('[data-stake]'); if(sk){ PLAY.stake=Number(sk.getAttribute('data-stake')); PLAY.msg=''; refreshPlay(); return; }
   if(t.closest('[data-play]')){ placeBet(); return; }
-  if(t.closest('[data-recharge]')){ SIM.bal=SIM_START; saveSim(); afterData(); return; }
-  if(t.closest('[data-simreset]')){ if(confirm('Cancellare tutte le schedine e ripartire da '+eur(SIM_START)+'?')){ SIM.bal=SIM_START; SIM.tickets=[]; saveSim(); afterData(); } return; }
+  if(t.closest('[data-simreset]')){ if(confirm('Cancellare tutte le schedine?')){ SIM.tickets=[]; saveSim(); afterData(); } return; }
 });
 document.addEventListener('change',function(e){
   var t=e.target;
