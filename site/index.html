@@ -313,7 +313,7 @@ footer{padding-inline:6px}
 .eurbox{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border-radius:999px;padding:6px 16px;font-weight:700}
 .eurbox input{width:5.5em;border:0;background:none;font:inherit;font-weight:800;font-size:1.1rem;color:var(--ink);outline:none;-moz-appearance:textfield}
 .eurbox input::-webkit-outer-spin-button,.eurbox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.playsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.playsum{display:grid;grid-template-columns:1fr;gap:8px}
 .playsum div{background:var(--surface);border-radius:20px;padding:10px 12px;min-width:0}
 .playsum span{display:block;font-size:.7rem;color:var(--muted);font-weight:600}
 .playsum b{font-family:var(--f-display);font-size:1.1rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
@@ -360,7 +360,7 @@ footer{padding-inline:6px}
 .chips{display:flex;gap:6px}.paybar .rbtn{background:#2b3a46;color:#fff;border:0}
 .paybar .playsum div{background:none;padding:0;text-align:left}
 .paybar .playsum span{color:#9fb0bb}.paybar .playsum b{color:#fff}.paybar .playsum b.winv{color:#ff8a00}
-@media (max-width:420px){.paybar .playsum{grid-template-columns:repeat(3,1fr)}.paybar .playsum div:last-child{grid-column:auto}}
+@media (max-width:420px){.paybar .playsum{grid-template-columns:1fr}}
 /* simulatore per partita e multipla */
 .simm{border-top:1px solid var(--line);padding-top:12px}
 .simm summary{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
@@ -1317,10 +1317,9 @@ function playHTML(){
    +(rows?'<ul class="legs">'+rows+'</ul>':'<p class="tsub">'+(cart?'La multipla è vuota. Apri «Simula» in una partita e tocca le quote che vuoi aggiungere, anche di campionati diversi.':'Non ci sono partite caricate in questa giornata.')+'</p>')
    +(est?'<p class="tsub" style="margin:0">* Quota stimata dal modello con margine del 7%: i bookmaker non la danno per questa partita o giocata.</p>':'')
    +'<div class="paybar">'
-   +'<div class="ptabs" role="tablist"><span class="ptab on" role="tab" aria-selected="true">Multipla</span><span class="ptab off" role="tab" aria-disabled="true" title="Non disponibile">Sistema</span></div>'
    +'<div class="stakerow2"><span>Puntata totale</span><span class="stepper"><button type="button" class="stp" data-step="-1" aria-label="Meno">−</button><span class="eurbox"><input id="stake" type="number" inputmode="decimal" min="1" step="1" value="'+(PLAY.stake||'')+'"><span>€</span></span><button type="button" class="stp" data-step="1" aria-label="Più">+</button></span></div>'
    +'<div class="chips">'+[5,10,20,50].map(function(v){return '<button class="rbtn" type="button" data-stake="'+v+'">'+v+'</button>';}).join('')+'</div>'
-   +'<div class="playsum"><div><span>Quota</span><b id="pq">'+(n?qfmt(q):'–')+'</b></div><div><span>Bonus multipla</span><b>– €</b></div><div><span>Vincita</span><b id="pw" class="winv">'+win+'</b></div></div>'
+   +'<div class="playsum"><div><span>Vincita possibile</span><b id="pw" class="winv">'+win+'</b></div></div>'
    +'<button class="bigbtn" id="playBtn" type="button" data-play="1">Gioca '+(cart?'multipla':'schedina')+'</button>'
    +'<p class="tsub pmsg" id="pmsg" style="margin:0"></p>'
    +'<p class="tsub" style="margin:0">Simulazione con denaro finto: nessuna scommessa vera. Quote bookmaker (football-data.co.uk) fissate quando giochi.</p>'
@@ -1411,7 +1410,6 @@ function renderCart(){
 }
 /* le mie schedine */
 function ticketHTML(t){
-  var pill=t.st==='open'?'In corso':(t.st==='won'?'Vinta':'Persa');
   var legs=t.legs.map(function(l){
     var s=legState(l), right;
     if(s.st==='wait') right='<span class="tsub">'+whenOf(l)+'</span>';
@@ -1421,22 +1419,15 @@ function ticketHTML(t){
       else if(s.st==='ko') right=score+'<span class="vd ko">✗ sbagliata</span>';
       else right=score+'<span class="vd on">'+(s.ev==='on'?'… in linea':'… fuori linea')+'</span>';
     }
-    return '<div class="tkleg"><span><b>'+l.h+'</b> – <b>'+l.a+'</b><br><small class="tsub">'+l.label+' · quota '+qfmt(l.odds)+'</small></span><span class="tkr">'+right+'</span></div>';
+    return '<div class="tkleg"><span><b>'+l.h+'</b> – <b>'+l.a+'</b><br><small class="tsub">'+l.label+'</small></span><span class="tkr">'+right+'</span></div>';
   }).join('');
-  var foot=t.st==='open'?'Vincita possibile <b>'+eur(t.win)+'</b>':(t.st==='won'?'Incassato <b>'+eur(t.win)+'</b> (guadagno '+eur(r2(t.win-t.stake))+')':'Persi <b>'+eur(t.stake)+'</b>');
   var d=new Date(t.at).toLocaleDateString('it-IT',{day:'numeric',month:'short'});
-  return '<article class="tk '+t.st+'"><div class="tkhead"><div><b>'+t.name+(t.round?' · giornata '+t.round:'')+'</b><div class="tsub">'+MKT[t.mk]+' · '+t.legs.length+(t.legs.length===1?' partita':' partite')+' · giocata il '+d+'</div></div><span class="tkpill '+t.st+'">'+pill+'</span></div>'
-   +legs+'<div class="tkfoot"><span>Importo <b>'+eur(t.stake)+'</b> · Quota finale <b>'+qfmt(t.quota)+'</b></span><span>'+foot+'</span></div></article>';
+  return '<article class="tk"><div class="tkhead"><div><b>'+t.name+(t.round?' · giornata '+t.round:'')+'</b><div class="tsub">'+MKT[t.mk]+' · '+t.legs.length+(t.legs.length===1?' partita':' partite')+' · giocata il '+d+'</div></div></div>'
+   +legs+'<div class="tkfoot"><span>Puntata <b>'+eur(t.stake)+'</b></span><span>Vincita possibile <b>'+eur(t.win)+'</b></span></div></article>';
 }
 function simHTML(){
-  var closed=SIM.tickets.filter(function(t){return t.st!=='open';}), open=SIM.tickets.filter(function(t){return t.st==='open';});
-  var wins=closed.filter(function(t){return t.st==='won';}), staked=0, back=0;
-  closed.forEach(function(t){staked+=t.stake; if(t.st==='won') back+=t.win;});
-  var net=r2(back-staked);
   return '<div class="shead"><h3 id="simTitle">Le mie schedine</h3><button class="rbtn" id="simClose" type="button" data-close-sim="1">Chiudi</button></div>'
    +'<p class="tsub" style="margin:0">Simulazione con denaro finto sulle partite reali. Le schedine si chiudono da sole quando finiscono le partite.</p>'
-   +'<div class="gsum"><div><span>In corso</span><b>'+open.length+'</b></div>'
-   +'<div><span>Vinte / chiuse</span><b>'+wins.length+'/'+closed.length+'</b></div><div><span>Bilancio</span><b style="color:var(--'+(net>=0?'good':'bad')+')">'+(net>0?'+':'')+eur(net)+'</b></div></div>'
    +(SIM.tickets.length?'<div class="tkl">'+SIM.tickets.map(ticketHTML).join('')+'</div>':'<div class="empty">Non hai ancora giocato nessuna schedina. Apri «Simula» in una partita, oppure «Schedina» di un campionato.</div>')
    +'<div class="simact">'+(SIM.tickets.length?'<button class="rbtn" type="button" data-simreset="1">Ricomincia da capo</button>':'')+'</div>';
 }
